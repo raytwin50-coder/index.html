@@ -124,6 +124,8 @@
   .save-note.err{ color:var(--fail); font-weight:600; }
 
   .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+  .kpis.kpis-5{ grid-template-columns:repeat(5,1fr); }
+  @media(max-width:1100px){ .kpis.kpis-5{ grid-template-columns:repeat(3,1fr); } }
   .kpi{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; }
   .kpi .n{ font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; }
   .kpi .l{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
@@ -254,7 +256,8 @@
           <div class="field"><label>Date *</label><input type="date" id="f-date"></div>
           <div class="field"><label>Agent Name *</label><select id="f-agent"></select></div>
           <div class="field"><label>Client Name</label><input type="text" id="f-client" placeholder="Optional"></div>
-          <div class="field"><label>Category *</label><select id="f-category"></select></div>
+          <div class="field"><label>Channel *</label><select id="f-channel"></select></div>
+          <div class="field"><label>Topic *</label><select id="f-topic"></select></div>
           <div class="field"><label>Client Feedback (reason) *</label><select id="f-reason"></select></div>
           <div class="field">
             <label>Resolved on Call?</label>
@@ -274,13 +277,14 @@
         <h2>All logged entries</h2>
         <div class="log-toolbar">
           <select id="filter-agent"><option value="">All agents</option></select>
-          <select id="filter-category"><option value="">All categories</option></select>
+          <select id="filter-channel"><option value="">All channels</option></select>
+          <select id="filter-topic"><option value="">All topics</option></select>
           <select id="filter-status"><option value="">All follow-up statuses</option></select>
           <span class="count" id="log-count"></span>
         </div>
         <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Date</th><th>Agent</th><th>Client</th><th>Category</th><th>Reason</th><th>Resolved?</th><th>Follow-up</th><th></th></tr></thead>
+          <thead><tr><th>Date</th><th>Agent</th><th>Client</th><th>Channel</th><th>Topic</th><th>Reason</th><th>Resolved?</th><th>Follow-up</th><th></th></tr></thead>
           <tbody id="log-body"></tbody>
         </table>
         </div>
@@ -289,25 +293,34 @@
 
     <!-- VIEW 3: DASHBOARD -->
     <section class="view" id="view-dash">
-      <div class="kpis">
-        <div class="kpi"><div class="n" id="kpi-total">0</div><div class="l">Total logged</div></div>
+      <div class="kpis kpis-5">
+        <div class="kpi"><div class="n" id="kpi-total">0</div><div class="l">Total contacts logged</div></div>
+        <div class="kpi"><div class="n" id="kpi-calls">0</div><div class="l">Inbound calls</div></div>
+        <div class="kpi"><div class="n" id="kpi-emails">0</div><div class="l">Emails</div></div>
         <div class="kpi"><div class="n" id="kpi-resolved">0%</div><div class="l">Resolved on call</div></div>
         <div class="kpi"><div class="n" id="kpi-open">0</div><div class="l">Open follow-ups</div></div>
-        <div class="kpi"><div class="n" id="kpi-topcat">—</div><div class="l">Leading category</div></div>
       </div>
       <div class="cols-2">
         <div class="card">
-          <h2>Category breakdown</h2>
-          <table><thead><tr><th>Category</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-cat"></tbody></table>
+          <h2>Channel breakdown <span class="tag">calls vs. emails, tracked separately</span></h2>
+          <table><thead><tr><th>Channel</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-channel"></tbody></table>
         </div>
         <div class="card">
-          <h2>Leader follow-up status</h2>
-          <table><thead><tr><th>Status</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-status"></tbody></table>
+          <h2>Topic breakdown <span class="tag">collections vs. sales</span></h2>
+          <table><thead><tr><th>Topic</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-topic"></tbody></table>
         </div>
       </div>
       <div class="card">
+        <h2>Topic × Channel <span class="tag">where each topic is coming from</span></h2>
+        <table><thead><tr><th>Combination</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-cross"></tbody></table>
+      </div>
+      <div class="card">
+        <h2>Leader follow-up status</h2>
+        <table><thead><tr><th>Status</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-status"></tbody></table>
+      </div>
+      <div class="card">
         <h2>Client feedback — reason breakdown <span class="tag">live, ranked by volume</span></h2>
-        <table><thead><tr><th>Reason</th><th>Count</th><th style="width:220px;">% of all calls</th></tr></thead><tbody id="dash-reason"></tbody></table>
+        <table><thead><tr><th>Reason</th><th>Count</th><th style="width:220px;">% of all contacts logged</th></tr></thead><tbody id="dash-reason"></tbody></table>
       </div>
     </section>
 
@@ -320,8 +333,10 @@
           <div class="field"><label>End date</label><input type="date" id="r-end"></div>
         </div>
       </div>
-      <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
-        <div class="kpi"><div class="n" id="r-total">0</div><div class="l">Calls in period</div></div>
+      <div class="kpis kpis-5">
+        <div class="kpi"><div class="n" id="r-total">0</div><div class="l">Contacts in period</div></div>
+        <div class="kpi"><div class="n" id="r-calls">0</div><div class="l">Inbound calls</div></div>
+        <div class="kpi"><div class="n" id="r-emails">0</div><div class="l">Emails</div></div>
         <div class="kpi"><div class="n" id="r-resolved-pct">0%</div><div class="l">Resolved</div></div>
         <div class="kpi"><div class="n" id="r-top-reason">—</div><div class="l">Top reason</div></div>
       </div>
@@ -334,6 +349,10 @@
           <h2>Resolution status <span class="tag">this period</span></h2>
           <table><thead><tr><th>Status</th><th>Count</th><th>% of total</th></tr></thead><tbody id="r-status"></tbody></table>
         </div>
+      </div>
+      <div class="card">
+        <h2>Topic split <span class="tag">collections vs. sales, this period</span></h2>
+        <table><thead><tr><th>Topic</th><th>Count</th><th>% of period</th></tr></thead><tbody id="r-topic"></tbody></table>
       </div>
     </section>
 
@@ -350,7 +369,7 @@
         <div class="kpi"><div class="n" id="t-trend">—</div><div class="l">Vs. previous range</div></div>
       </div>
       <div class="card">
-        <h2>Daily volume</h2>
+        <h2>Daily volume <span class="tag">calls vs. emails</span></h2>
         <div class="chart-wrap"><canvas id="chart-volume"></canvas></div>
       </div>
       <div class="card">
@@ -361,11 +380,11 @@
         <h2>Day-by-day breakdown</h2>
         <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>Date</th><th>Total</th><th>Resolved</th><th>In Progress</th><th>Transferred</th><th>Failed</th><th>Top reason that day</th></tr></thead>
+          <thead><tr><th>Date</th><th>Calls</th><th>Emails</th><th>Total</th><th>Resolved</th><th>In Progress</th><th>Transferred</th><th>Failed</th><th>Top reason that day</th></tr></thead>
           <tbody id="trend-body"></tbody>
         </table>
         </div>
-        <p class="trend-note">Shows how often each reason and resolution outcome comes up, day by day, over the selected range.</p>
+        <p class="trend-note">Calls and emails are tracked separately so call volume isn't diluted by email traffic. Shows how often each reason and resolution outcome comes up, day by day.</p>
       </div>
     </section>
 
@@ -412,7 +431,8 @@ if(isConfigured){
   document.getElementById("setup-banner").style.display = "block";
 }
 
-const CATEGORIES = ["Collection(Inbound)","Sales(Inbound)","Emails"];
+const CHANNELS = ["Inbound Call","Email"];
+const TOPICS = ["Collections","Sales"];
 const DEFAULT_REASONS = ["Interest Complaint","Missed call(NOK)","Balance transfer/Explanation","Loan Statement/Quotation",
   "Debit Issue","Account on hold","CRB","Push to pay","USSD failure(Pay)","Account explanation","Kwika",
   "USSD failure(Borrow)","Zako Loan calculator","Work confirmation","Branch direction","Disbursement issue",
@@ -420,7 +440,7 @@ const DEFAULT_REASONS = ["Interest Complaint","Missed call(NOK)","Balance transf
 const AGENTS = ["Jupiter Atuhaire","Beatrice","Grace","Rinah","Josephine"];
 const STATUSES = ["Resolved","In Progress","Transferred","Failed"];
 
-let entries = [];       // [{id, date, agent, client, category, reason, resolved, status}]
+let entries = [];       // [{id, date, agent, client, channel, topic, reason, resolved, status}]
 let reasons = [];       // [{id, name}]
 let trendDays = 7;
 
@@ -447,13 +467,16 @@ function reasonNames(){ return reasons.map(r=>r.name); }
 
 function initStaticOptions(){
   fillSelect(document.getElementById("f-agent"), AGENTS, true);
-  fillSelect(document.getElementById("f-category"), CATEGORIES, true);
+  fillSelect(document.getElementById("f-channel"), CHANNELS, true);
+  fillSelect(document.getElementById("f-topic"), TOPICS, true);
   document.getElementById("f-date").value = todayISO();
 
   const fa = document.getElementById("filter-agent");
   fillSelect(fa, AGENTS, false); fa.insertBefore(new Option("All agents",""), fa.firstChild);
-  const fc = document.getElementById("filter-category");
-  fillSelect(fc, CATEGORIES, false); fc.insertBefore(new Option("All categories",""), fc.firstChild);
+  const fch = document.getElementById("filter-channel");
+  fillSelect(fch, CHANNELS, false); fch.insertBefore(new Option("All channels",""), fch.firstChild);
+  const ft = document.getElementById("filter-topic");
+  fillSelect(ft, TOPICS, false); ft.insertBefore(new Option("All topics",""), ft.firstChild);
   const fs = document.getElementById("filter-status");
   fillSelect(fs, STATUSES, false); fs.insertBefore(new Option("All follow-up statuses",""), fs.firstChild);
 }
@@ -570,19 +593,20 @@ document.getElementById("btn-save").addEventListener("click", async ()=>{
   const date = document.getElementById("f-date").value;
   const agent = document.getElementById("f-agent").value;
   const client = document.getElementById("f-client").value.trim();
-  const category = document.getElementById("f-category").value;
+  const channel = document.getElementById("f-channel").value;
+  const topic = document.getElementById("f-topic").value;
   const reason = document.getElementById("f-reason").value;
   const resolved = document.getElementById("f-resolved").value;
   const note = document.getElementById("save-note");
 
-  if(!date || !agent || !category || !reason){
-    note.textContent = "Please fill in date, agent, category and reason.";
+  if(!date || !agent || !channel || !topic || !reason){
+    note.textContent = "Please fill in date, agent, channel, topic and reason.";
     note.className = "save-note err";
     return;
   }
   const btn = document.getElementById("btn-save");
   btn.disabled = true;
-  const entry = { date, agent, client, category, reason, resolved, status: "" };
+  const entry = { date, agent, client, channel, topic, reason, resolved, status: "" };
   try{
     if(isConfigured){
       await db.ref("entries").push(entry);
@@ -612,11 +636,13 @@ function statusChip(status){
 
 function filteredEntries(){
   const agent = document.getElementById("filter-agent").value;
-  const category = document.getElementById("filter-category").value;
+  const channel = document.getElementById("filter-channel").value;
+  const topic = document.getElementById("filter-topic").value;
   const status = document.getElementById("filter-status").value;
   return entries.filter(e=>
     (!agent || e.agent===agent) &&
-    (!category || e.category===category) &&
+    (!channel || e.channel===channel) &&
+    (!topic || e.topic===topic) &&
     (!status || e.status===status)
   );
 }
@@ -633,12 +659,12 @@ function renderTable(){
   const rows = filteredEntries();
   document.getElementById("log-count").textContent = rows.length + " of " + entries.length + " entries";
   if(rows.length===0){
-    body.innerHTML = `<tr><td colspan="8" class="empty-row">No entries match — log one from the "Log a Contact" tab.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" class="empty-row">No entries match — log one from the "Log a Contact" tab.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(e=>`
     <tr>
-      <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.category||""}</td>
+      <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.channel||""}</td><td>${e.topic||""}</td>
       <td>${e.reason||""}</td><td>${e.resolved||"—"}</td><td>${isLeader ? statusEditor(e) : statusChip(e.status)}</td>
       <td><button class="del-btn" data-id="${e.id}">Remove</button></td>
     </tr>
@@ -658,7 +684,7 @@ function renderTable(){
     });
   });
 }
-["filter-agent","filter-category","filter-status"].forEach(id=>{
+["filter-agent","filter-channel","filter-topic","filter-status"].forEach(id=>{
   document.getElementById(id).addEventListener("change", renderTable);
 });
 
@@ -670,21 +696,42 @@ function renderDashboard(){
   const total = entries.length;
   document.getElementById("kpi-total").textContent = total;
 
-  const resolvedOnCall = entries.filter(e=>e.resolved==="Yes").length;
-  document.getElementById("kpi-resolved").textContent = total ? fmtPct(pct(resolvedOnCall,total)) : "0%";
+  const callsCount = entries.filter(e=>e.channel==="Inbound Call").length;
+  const emailsCount = entries.filter(e=>e.channel==="Email").length;
+  document.getElementById("kpi-calls").textContent = callsCount;
+  document.getElementById("kpi-emails").textContent = emailsCount;
+
+  // "Resolved on call" only makes sense for the Inbound Call channel
+  const resolvedOnCall = entries.filter(e=>e.channel==="Inbound Call" && e.resolved==="Yes").length;
+  document.getElementById("kpi-resolved").textContent = callsCount ? fmtPct(pct(resolvedOnCall,callsCount)) : "0%";
 
   const open = entries.filter(e=> e.status==="In Progress" || e.status==="Transferred" || (!e.status && !e.resolved)).length;
   document.getElementById("kpi-open").textContent = open;
 
-  const catCounts = CATEGORIES.map(c=>({name:c, count: entries.filter(e=>e.category===c).length}));
-  const topCat = catCounts.slice().sort((a,b)=>b.count-a.count)[0];
-  document.getElementById("kpi-topcat").textContent = (topCat && topCat.count>0) ? topCat.name.replace("(Inbound)","") : "—";
-
-  document.getElementById("dash-cat").innerHTML = catCounts.map(c=>`
+  const channelCounts = CHANNELS.map(c=>({name:c, count: entries.filter(e=>e.channel===c).length}));
+  document.getElementById("dash-channel").innerHTML = channelCounts.map(c=>`
     <tr><td>${c.name}</td><td>${c.count}</td>
       <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(c.count,total)}%"></div></div>
       <span class="pct">${fmtPct(pct(c.count,total))}</span></td></tr>
   `).join("") + `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td></tr>`;
+
+  const topicCounts = TOPICS.map(t=>({name:t, count: entries.filter(e=>e.topic===t).length}));
+  document.getElementById("dash-topic").innerHTML = topicCounts.map(t=>`
+    <tr><td>${t.name}</td><td>${t.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill brass" style="width:${pct(t.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(t.count,total))}</span></td></tr>
+  `).join("") + `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td></tr>`;
+
+  const crossRows = [];
+  CHANNELS.forEach(c=> TOPICS.forEach(t=>{
+    const count = entries.filter(e=>e.channel===c && e.topic===t).length;
+    crossRows.push({name: `${c} — ${t}`, count});
+  }));
+  document.getElementById("dash-cross").innerHTML = crossRows.map(r=>`
+    <tr><td>${r.name}</td><td>${r.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(r.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(r.count,total))}</span></td></tr>
+  `).join("");
 
   const statusCounts = STATUSES.map(s=>({name:s, count: entries.filter(e=>e.status===s).length}));
   document.getElementById("dash-status").innerHTML = statusCounts.map(s=>`
@@ -717,6 +764,11 @@ function renderReport(){
   const total = rows.length;
   document.getElementById("r-total").textContent = total;
 
+  const callsInPeriod = rows.filter(e=>e.channel==="Inbound Call").length;
+  const emailsInPeriod = rows.filter(e=>e.channel==="Email").length;
+  document.getElementById("r-calls").textContent = callsInPeriod;
+  document.getElementById("r-emails").textContent = emailsInPeriod;
+
   const resolved = rows.filter(e=>e.status==="Resolved").length;
   document.getElementById("r-resolved-pct").textContent = total ? fmtPct(pct(resolved,total)) : "0%";
 
@@ -732,6 +784,11 @@ function renderReport(){
   const statusCounts = STATUSES.map(s=>({name:s, count: rows.filter(e=>e.status===s).length}));
   document.getElementById("r-status").innerHTML = statusCounts.map(s=>`
     <tr><td>${statusChip(s.name)}</td><td>${s.count}</td><td>${fmtPct(pct(s.count,total))}</td></tr>
+  `).join("");
+
+  const topicCounts = TOPICS.map(t=>({name:t, count: rows.filter(e=>e.topic===t).length}));
+  document.getElementById("r-topic").innerHTML = topicCounts.map(t=>`
+    <tr><td>${t.name}</td><td>${t.count}</td><td>${fmtPct(pct(t.count,total))}</td></tr>
   `).join("");
 }
 document.getElementById("r-start").addEventListener("change", renderReport);
@@ -766,9 +823,11 @@ function renderTrends(){
     const rows = entries.filter(e=>e.date===d);
     const byStatus = {};
     STATUSES.forEach(s=> byStatus[s] = rows.filter(e=>e.status===s).length);
+    const calls = rows.filter(e=>e.channel==="Inbound Call").length;
+    const emails = rows.filter(e=>e.channel==="Email").length;
     const reasonCounts = reasonNames().map(r=>({name:r, count: rows.filter(e=>e.reason===r).length})).sort((a,b)=>b.count-a.count);
     const top = reasonCounts[0] && reasonCounts[0].count>0 ? reasonCounts[0].name : "—";
-    return { date:d, total: rows.length, ...byStatus, top };
+    return { date:d, total: rows.length, calls, emails, ...byStatus, top };
   });
 
   const totalThisRange = dayStats.reduce((s,d)=>s+d.total,0);
@@ -794,7 +853,7 @@ function renderTrends(){
 
   // day breakdown table
   document.getElementById("trend-body").innerHTML = dayStats.map(d=>`
-    <tr><td>${d.date}</td><td>${d.total}</td><td>${d.Resolved||0}</td><td>${d["In Progress"]||0}</td>
+    <tr><td>${d.date}</td><td>${d.calls}</td><td>${d.emails}</td><td>${d.total}</td><td>${d.Resolved||0}</td><td>${d["In Progress"]||0}</td>
       <td>${d.Transferred||0}</td><td>${d.Failed||0}</td><td>${d.top}</td></tr>
   `).join("");
 
@@ -805,9 +864,12 @@ function renderTrends(){
     if(chartVolume) chartVolume.destroy();
     chartVolume = new Chart(volCtx, {
       type: "bar",
-      data: { labels, datasets: [{ label:"Entries logged", data: dayStats.map(d=>d.total), backgroundColor:"#2F7A5E", borderRadius:4 }] },
-      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
-        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+      data: { labels, datasets: [
+        { label:"Inbound calls", data: dayStats.map(d=>d.calls), backgroundColor:"#2F7A5E", borderRadius:4, stack:"vol" },
+        { label:"Emails", data: dayStats.map(d=>d.emails), backgroundColor:"#B8863B", borderRadius:4, stack:"vol" }
+      ] },
+      options: { responsive:true, maintainAspectRatio:false,
+        scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } }
     });
 
     const stCtx = document.getElementById("chart-status").getContext("2d");
