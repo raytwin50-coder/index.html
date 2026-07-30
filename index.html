@@ -68,6 +68,15 @@
     border-top:1px solid rgba(255,255,255,0.1); padding-top:14px;
   }
   .rail .foot span{ color:var(--brass-soft); font-weight:600; }
+  .leader-gate{
+    margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1);
+    display:flex; align-items:center; font-size:12px;
+  }
+  .leader-link{
+    all:unset; cursor:pointer; color:var(--brass-soft); font-size:12px; font-weight:600;
+  }
+  .leader-link:hover{ color:#fff; text-decoration:underline; }
+  #leader-active-badge{ color:#EFE9DA; align-items:center; }
 
   main{ flex:1; padding:36px 44px 60px; max-width:1180px; }
   header.page-head{
@@ -192,6 +201,10 @@
   .reason-chip button:hover{ background:var(--fail); color:#fff; }
   .add-reason-row{ display:flex; gap:10px; margin-top:18px; }
   .add-reason-row input{ flex:1; }
+  .status-select{
+    font-size:12.5px; font-weight:600; padding:4px 8px; border-radius:20px;
+    border:1px solid var(--line); background:#FCFBF8; color:var(--ink);
+  }
 </style>
 </head>
 <body>
@@ -200,12 +213,19 @@
     <div class="brand">Inbound &amp; Email<br>Feedback Tracker<small>Quick Fix Stars · Unifi</small></div>
     <nav>
       <button class="nav-btn active" data-view="log"><span class="num">01</span> Log a Contact</button>
-      <button class="nav-btn" data-view="table"><span class="num">02</span> Feedback Log</button>
-      <button class="nav-btn" data-view="dash"><span class="num">03</span> Dashboard</button>
-      <button class="nav-btn" data-view="report"><span class="num">04</span> Report</button>
-      <button class="nav-btn" data-view="trends"><span class="num">05</span> Trends</button>
-      <button class="nav-btn" data-view="reasons"><span class="num">06</span> Manage Reasons</button>
+      <button class="nav-btn leader-only" data-view="table"><span class="num">02</span> Feedback Log</button>
+      <button class="nav-btn leader-only" data-view="dash"><span class="num">03</span> Dashboard</button>
+      <button class="nav-btn leader-only" data-view="report"><span class="num">04</span> Report</button>
+      <button class="nav-btn leader-only" data-view="trends"><span class="num">05</span> Trends</button>
+      <button class="nav-btn leader-only" data-view="reasons"><span class="num">06</span> Manage Reasons</button>
     </nav>
+    <div class="leader-gate" id="leader-gate">
+      <button class="leader-link" id="btn-leader-login">Leader sign-in</button>
+    </div>
+    <div class="leader-gate leader-only" id="leader-active-badge" style="display:none;">
+      <span class="dot" style="background:var(--brass);width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;"></span>Leader mode
+      <button class="leader-link" id="btn-leader-logout" style="margin-left:auto;">Sign out</button>
+    </div>
     <div class="conn off" id="conn-indicator"><span class="dot"></span><span id="conn-label">Connecting…</span></div>
     <div class="foot">Live shared log — every entry, edit, and reason change is visible to <span>everyone with this link</span>, instantly.</div>
   </aside>
@@ -240,7 +260,6 @@
             <label>Resolved on Call?</label>
             <select id="f-resolved"><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
           </div>
-          <div class="field"><label>Leader Follow-up Status</label><select id="f-status"></select></div>
         </div>
         <div class="form-actions">
           <button class="primary" id="btn-save">Log entry</button>
@@ -404,6 +423,11 @@ const STATUSES = ["Resolved","In Progress","Transferred","Failed"];
 let entries = [];       // [{id, date, agent, client, category, reason, resolved, status}]
 let reasons = [];       // [{id, name}]
 let trendDays = 7;
+
+/* Leader access — client-side gate only (not real security, just keeps agents
+   on the log-only view). Change this passcode to whatever you like. */
+const LEADER_PASSCODE = "sealit";
+let isLeader = localStorage.getItem("qfs_leader") === "true";
 let chartVolume = null;
 let chartStatus = null;
 
@@ -424,7 +448,6 @@ function reasonNames(){ return reasons.map(r=>r.name); }
 function initStaticOptions(){
   fillSelect(document.getElementById("f-agent"), AGENTS, true);
   fillSelect(document.getElementById("f-category"), CATEGORIES, true);
-  fillSelect(document.getElementById("f-status"), STATUSES, true);
   document.getElementById("f-date").value = todayISO();
 
   const fa = document.getElementById("filter-agent");
@@ -489,14 +512,48 @@ function renderAll(){
 /* ---------------- nav ---------------- */
 const titles = {
   log: ["Log a Contact","Record a call or email exactly as it came in."],
-  table: ["Feedback Log","Every entry logged by the team, newest first."],
+  table: ["Feedback Log","Every entry logged by the team — mark follow-up status here as you work through open items."],
   dash: ["Dashboard","Live breakdown across every logged entry."],
   report: ["Report","Pick a date range to see performance for that period."],
   trends: ["Trends","How volume, reasons, and resolution are moving day to day."],
   reasons: ["Manage Reasons","Keep the feedback reason list current for the whole team."]
 };
+function applyRole(){
+  document.querySelectorAll(".leader-only.nav-btn").forEach(b=> b.style.display = isLeader ? "flex" : "none");
+  document.getElementById("leader-gate").style.display = isLeader ? "none" : "flex";
+  document.getElementById("leader-active-badge").style.display = isLeader ? "flex" : "none";
+  if(!isLeader){
+    // force back to the log view if an agent's browser somehow has another view active
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelector('.nav-btn[data-view="log"]').classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-log").classList.add("active");
+    document.getElementById("page-title").textContent = titles.log[0];
+    document.getElementById("page-sub").textContent = titles.log[1];
+  }
+}
+
+document.getElementById("btn-leader-login").addEventListener("click", ()=>{
+  const entered = prompt("Leader passcode:");
+  if(entered === null) return;
+  if(entered === LEADER_PASSCODE){
+    isLeader = true;
+    localStorage.setItem("qfs_leader","true");
+    applyRole();
+    renderAll();
+  }else{
+    alert("That's not right — try again.");
+  }
+});
+document.getElementById("btn-leader-logout").addEventListener("click", ()=>{
+  isLeader = false;
+  localStorage.removeItem("qfs_leader");
+  applyRole();
+});
+
 document.querySelectorAll(".nav-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
+    if(btn.classList.contains("leader-only") && !isLeader) return;
     document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     const view = btn.dataset.view;
@@ -516,7 +573,6 @@ document.getElementById("btn-save").addEventListener("click", async ()=>{
   const category = document.getElementById("f-category").value;
   const reason = document.getElementById("f-reason").value;
   const resolved = document.getElementById("f-resolved").value;
-  const status = document.getElementById("f-status").value;
   const note = document.getElementById("save-note");
 
   if(!date || !agent || !category || !reason){
@@ -526,7 +582,7 @@ document.getElementById("btn-save").addEventListener("click", async ()=>{
   }
   const btn = document.getElementById("btn-save");
   btn.disabled = true;
-  const entry = { date, agent, client, category, reason, resolved, status };
+  const entry = { date, agent, client, category, reason, resolved, status: "" };
   try{
     if(isConfigured){
       await db.ref("entries").push(entry);
@@ -539,7 +595,6 @@ document.getElementById("btn-save").addEventListener("click", async ()=>{
     document.getElementById("f-client").value = "";
     document.getElementById("f-reason").value = "";
     document.getElementById("f-resolved").value = "";
-    document.getElementById("f-status").value = "";
   }catch(e){
     note.textContent = "Couldn't save — check your connection.";
     note.className = "save-note err";
@@ -566,6 +621,13 @@ function filteredEntries(){
   );
 }
 
+function statusEditor(e){
+  const opts = [""].concat(STATUSES).map(s=>
+    `<option value="${s}" ${e.status===s?"selected":""}>${s||"— mark status —"}</option>`
+  ).join("");
+  return `<select class="status-select" data-id="${e.id}">${opts}</select>`;
+}
+
 function renderTable(){
   const body = document.getElementById("log-body");
   const rows = filteredEntries();
@@ -577,7 +639,7 @@ function renderTable(){
   body.innerHTML = rows.map(e=>`
     <tr>
       <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.category||""}</td>
-      <td>${e.reason||""}</td><td>${e.resolved||"—"}</td><td>${statusChip(e.status)}</td>
+      <td>${e.reason||""}</td><td>${e.resolved||"—"}</td><td>${isLeader ? statusEditor(e) : statusChip(e.status)}</td>
       <td><button class="del-btn" data-id="${e.id}">Remove</button></td>
     </tr>
   `).join("");
@@ -585,6 +647,14 @@ function renderTable(){
     b.addEventListener("click", async ()=>{
       if(isConfigured){ await db.ref("entries/"+b.dataset.id).remove(); }
       else{ entries = entries.filter(e=>e.id!==b.dataset.id); renderAll(); }
+    });
+  });
+  body.querySelectorAll(".status-select").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const id = sel.dataset.id;
+      const val = sel.value;
+      if(isConfigured){ await db.ref("entries/"+id+"/status").set(val); }
+      else{ const e = entries.find(x=>x.id===id); if(e) e.status = val; renderAll(); }
     });
   });
 }
@@ -804,6 +874,7 @@ setInterval(tickClock, 30000);
 /* ---------------- init ---------------- */
 (function init(){
   initStaticOptions();
+  applyRole();
   const today = todayISO();
   const in12 = new Date(); in12.setDate(in12.getDate()+11);
   document.getElementById("r-start").value = today;
