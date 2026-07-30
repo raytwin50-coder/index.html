@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inbound &amp; Email Feedback Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#12241E;
+    --paper:#F6F4EF;
+    --panel:#FFFFFF;
+    --line:#DCD6C9;
+    --deep:#0E2B24;
+    --brass:#B8863B;
+    --brass-soft:#E9D9B8;
+    --signal:#2F7A5E;
+    --signal-soft:#DCEEE5;
+    --warn:#B4552C;
+    --warn-soft:#F3E0D2;
+    --fail:#A23B3B;
+    --fail-soft:#F3DCDC;
+    --muted:#6B6459;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{ display:flex; min-height:100vh; }
+  .rail{
+    width:230px; flex-shrink:0; background:var(--deep); color:#EFE9DA;
+    display:flex; flex-direction:column; padding:28px 18px;
+    position:sticky; top:0; height:100vh;
+  }
+  .rail .brand{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    letter-spacing:0.02em; line-height:1.3; color:#fff; padding-bottom:4px;
+  }
+  .rail .brand small{
+    display:block; font-family:'JetBrains Mono',monospace; font-weight:500;
+    font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--brass-soft); margin-top:6px;
+  }
+  .rail nav{ margin-top:30px; display:flex; flex-direction:column; gap:3px; }
+  .rail nav button{
+    all:unset; cursor:pointer; padding:10px 12px; border-radius:8px;
+    font-size:13px; font-weight:500; color:#C9C2B2;
+    display:flex; align-items:center; gap:10px;
+    transition:background .15s ease, color .15s ease;
+  }
+  .rail nav button .num{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#7C9186; width:16px;
+  }
+  .rail nav button:hover{ background:rgba(255,255,255,0.06); color:#fff; }
+  .rail nav button.active{ background:var(--brass); color:#1C1305; font-weight:600; }
+  .rail nav button.active .num{ color:#1C1305; }
+  .rail .foot{
+    margin-top:auto; font-size:11px; color:#7C9186; line-height:1.6;
+    border-top:1px solid rgba(255,255,255,0.1); padding-top:14px;
+  }
+  .rail .foot span{ color:var(--brass-soft); font-weight:600; }
+
+  main{ flex:1; padding:36px 44px 60px; max-width:1180px; }
+  header.page-head{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:28px; border-bottom:1px solid var(--line); padding-bottom:18px;
+  }
+  header.page-head h1{ font-family:'Space Grotesk',sans-serif; font-size:26px; margin:0 0 4px; letter-spacing:-0.01em; }
+  header.page-head p{ margin:0; color:var(--muted); font-size:13.5px; }
+  .stamp{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); text-align:right; line-height:1.6; }
+
+  .view{ display:none; }
+  .view.active{ display:block; animation:rise .25s ease; }
+  @keyframes rise{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px 26px; margin-bottom:20px; }
+  .card h2{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; margin:0 0 18px; display:flex; align-items:center; gap:8px; }
+  .card h2 .tag{
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--brass);
+    border:1px solid var(--brass-soft); background:var(--brass-soft);
+    padding:2px 7px; border-radius:20px; font-weight:600;
+  }
+
+  .grid-form{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px 18px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); }
+  .field select, .field input{
+    font-family:'Inter',sans-serif; font-size:14px; padding:9px 10px; border-radius:7px;
+    border:1px solid var(--line); background:#FCFBF8; color:var(--ink);
+  }
+  .field select:focus, .field input:focus{ outline:2px solid var(--signal); outline-offset:1px; border-color:var(--signal); }
+  .form-actions{ margin-top:20px; display:flex; align-items:center; gap:14px; }
+  button.primary{
+    all:unset; cursor:pointer; background:var(--deep); color:#EFE9DA; font-weight:600;
+    font-size:13.5px; padding:11px 22px; border-radius:8px; transition:background .15s ease;
+  }
+  button.primary:hover{ background:#0A1F19; }
+  button.primary:disabled{ opacity:0.45; cursor:not-allowed; }
+  button.secondary{
+    all:unset; cursor:pointer; background:#FCFBF8; color:var(--ink); font-weight:600;
+    font-size:13px; padding:9px 16px; border-radius:8px; border:1px solid var(--line);
+  }
+  button.secondary:hover{ background:#F0ECE1; }
+  .save-note{ font-size:12px; color:var(--muted); }
+  .save-note.ok{ color:var(--signal); font-weight:600; }
+  .save-note.err{ color:var(--fail); font-weight:600; }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+  .kpi{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; }
+  .kpi .n{ font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; }
+  .kpi .l{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;
+    color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line);
+  }
+  td{ padding:9px 10px; border-bottom:1px solid #EDE8DD; }
+  tr:last-child td{ border-bottom:none; }
+  .bar-cell{ display:flex; align-items:center; gap:10px; }
+  .bar-track{ flex:1; height:6px; background:#EDE8DD; border-radius:4px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--signal); border-radius:4px; }
+  .bar-fill.brass{ background:var(--brass); }
+  .pct{ font-family:'JetBrains Mono',monospace; font-size:12px; width:48px; text-align:right; color:var(--muted); }
+
+  .cols-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:980px){ .cols-2{ grid-template-columns:1fr; } .grid-form{ grid-template-columns:1fr 1fr;} .kpis{grid-template-columns:1fr 1fr;} }
+
+  .status-chip{ display:inline-block; font-size:11.5px; font-weight:600; padding:3px 10px; border-radius:20px; }
+  .status-resolved{ background:var(--signal-soft); color:var(--signal); }
+  .status-inprogress{ background:var(--brass-soft); color:#8A5A18; }
+  .status-transferred{ background:#E1E6F0; color:#3A4E8A; }
+  .status-failed{ background:var(--fail-soft); color:var(--fail); }
+  .status-none{ background:#EDE8DD; color:var(--muted); }
+
+  .log-toolbar{ display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+  .log-toolbar select, .log-toolbar input{
+    font-size:13px; padding:7px 9px; border-radius:7px; border:1px solid var(--line); background:#FCFBF8;
+  }
+  .log-toolbar .count{ margin-left:auto; font-size:12px; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .del-btn{ all:unset; cursor:pointer; color:var(--fail); font-size:12px; font-weight:600; }
+  .del-btn:hover{ text-decoration:underline; }
+  .empty-row{ text-align:center; color:var(--muted); padding:26px 0; font-size:13px; }
+
+  .range-row{ display:flex; gap:16px; align-items:flex-end; margin-bottom:8px; }
+  .rank-badge{
+    display:inline-flex; align-items:center; justify-content:center; width:20px;height:20px;border-radius:50%;
+    background:var(--deep); color:#EFE9DA; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600;
+  }
+  .conn{
+    display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace;
+    font-size:11px; color:var(--muted); margin-top:6px; justify-content:flex-end;
+  }
+  .conn .dot{ width:7px; height:7px; border-radius:50%; background:var(--muted); }
+  .conn.live .dot{ background:var(--signal); box-shadow:0 0 0 3px var(--signal-soft); }
+  .conn.live{ color:var(--signal); }
+  .conn.off .dot{ background:var(--fail); }
+  .conn.off{ color:var(--fail); }
+  .setup-banner{
+    background:var(--warn-soft); border:1px solid #E7C29B; color:#7A4319;
+    border-radius:var(--radius); padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.6;
+  }
+  .setup-banner code{ background:#fff; padding:1px 6px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  .range-toggle{ display:flex; gap:6px; margin-bottom:16px; }
+  .range-toggle button{
+    all:unset; cursor:pointer; padding:6px 14px; border-radius:20px; font-size:12.5px;
+    font-weight:600; color:var(--muted); border:1px solid var(--line);
+  }
+  .range-toggle button.active{ background:var(--deep); color:#EFE9DA; border-color:var(--deep); }
+  .chart-wrap{ position:relative; height:220px; }
+  .trend-note{ font-size:12px; color:var(--muted); margin-top:10px; }
+
+  .reason-list{ display:flex; flex-wrap:wrap; gap:8px; }
+  .reason-chip{
+    display:flex; align-items:center; gap:8px; background:#FCFBF8; border:1px solid var(--line);
+    border-radius:20px; padding:6px 8px 6px 14px; font-size:13px;
+  }
+  .reason-chip button{
+    all:unset; cursor:pointer; width:18px; height:18px; border-radius:50%; background:var(--fail-soft);
+    color:var(--fail); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    line-height:1;
+  }
+  .reason-chip button:hover{ background:var(--fail); color:#fff; }
+  .add-reason-row{ display:flex; gap:10px; margin-top:18px; }
+  .add-reason-row input{ flex:1; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">Inbound &amp; Email<br>Feedback Tracker<small>Deal Sealers · Unifi</small></div>
+    <nav>
+      <button class="nav-btn active" data-view="log"><span class="num">01</span> Log a Contact</button>
+      <button class="nav-btn" data-view="table"><span class="num">02</span> Feedback Log</button>
+      <button class="nav-btn" data-view="dash"><span class="num">03</span> Dashboard</button>
+      <button class="nav-btn" data-view="report"><span class="num">04</span> Report</button>
+      <button class="nav-btn" data-view="trends"><span class="num">05</span> Trends</button>
+      <button class="nav-btn" data-view="reasons"><span class="num">06</span> Manage Reasons</button>
+    </nav>
+    <div class="conn off" id="conn-indicator"><span class="dot"></span><span id="conn-label">Connecting…</span></div>
+    <div class="foot">Live shared log — every entry, edit, and reason change is visible to <span>everyone with this link</span>, instantly.</div>
+  </aside>
+
+  <main>
+    <header class="page-head">
+      <div>
+        <h1 id="page-title">Log a Contact</h1>
+        <p id="page-sub">Record a call or email exactly as it came in.</p>
+      </div>
+      <div class="stamp" id="clock"></div>
+    </header>
+
+    <div class="setup-banner" id="setup-banner" style="display:none;">
+      <strong>One-time setup needed.</strong> This copy isn't connected to a database yet, so entries won't sync or survive a refresh.
+      Open <code>index.html</code>, find the <code>firebaseConfig</code> object near the top of the script, and paste in your own
+      Firebase project's config (create a free project at <code>console.firebase.google.com</code>, add a Web app, enable
+      Realtime Database). Then commit and push — GitHub Pages will serve the live version.
+    </div>
+
+    <!-- VIEW 1: LOG ENTRY -->
+    <section class="view active" id="view-log">
+      <div class="card">
+        <h2>New entry <span class="tag">required fields marked *</span></h2>
+        <div class="grid-form">
+          <div class="field"><label>Date *</label><input type="date" id="f-date"></div>
+          <div class="field"><label>Agent Name *</label><select id="f-agent"></select></div>
+          <div class="field"><label>Client Name</label><input type="text" id="f-client" placeholder="Optional"></div>
+          <div class="field"><label>Category *</label><select id="f-category"></select></div>
+          <div class="field"><label>Client Feedback (reason) *</label><select id="f-reason"></select></div>
+          <div class="field">
+            <label>Resolved on Call?</label>
+            <select id="f-resolved"><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
+          </div>
+          <div class="field"><label>Leader Follow-up Status</label><select id="f-status"></select></div>
+        </div>
+        <div class="form-actions">
+          <button class="primary" id="btn-save">Log entry</button>
+          <span class="save-note" id="save-note"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: FEEDBACK LOG -->
+    <section class="view" id="view-table">
+      <div class="card">
+        <h2>All logged entries</h2>
+        <div class="log-toolbar">
+          <select id="filter-agent"><option value="">All agents</option></select>
+          <select id="filter-category"><option value="">All categories</option></select>
+          <select id="filter-status"><option value="">All follow-up statuses</option></select>
+          <span class="count" id="log-count"></span>
+        </div>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Date</th><th>Agent</th><th>Client</th><th>Category</th><th>Reason</th><th>Resolved?</th><th>Follow-up</th><th></th></tr></thead>
+          <tbody id="log-body"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: DASHBOARD -->
+    <section class="view" id="view-dash">
+      <div class="kpis">
+        <div class="kpi"><div class="n" id="kpi-total">0</div><div class="l">Total logged</div></div>
+        <div class="kpi"><div class="n" id="kpi-resolved">0%</div><div class="l">Resolved on call</div></div>
+        <div class="kpi"><div class="n" id="kpi-open">0</div><div class="l">Open follow-ups</div></div>
+        <div class="kpi"><div class="n" id="kpi-topcat">—</div><div class="l">Leading category</div></div>
+      </div>
+      <div class="cols-2">
+        <div class="card">
+          <h2>Category breakdown</h2>
+          <table><thead><tr><th>Category</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-cat"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>Leader follow-up status</h2>
+          <table><thead><tr><th>Status</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-status"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Client feedback — reason breakdown <span class="tag">live, ranked by volume</span></h2>
+        <table><thead><tr><th>Reason</th><th>Count</th><th style="width:220px;">% of all calls</th></tr></thead><tbody id="dash-reason"></tbody></table>
+      </div>
+    </section>
+
+    <!-- VIEW 4: REPORT -->
+    <section class="view" id="view-report">
+      <div class="card">
+        <h2>Reporting period</h2>
+        <div class="range-row">
+          <div class="field"><label>Start date</label><input type="date" id="r-start"></div>
+          <div class="field"><label>End date</label><input type="date" id="r-end"></div>
+        </div>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi"><div class="n" id="r-total">0</div><div class="l">Calls in period</div></div>
+        <div class="kpi"><div class="n" id="r-resolved-pct">0%</div><div class="l">Resolved</div></div>
+        <div class="kpi"><div class="n" id="r-top-reason">—</div><div class="l">Top reason</div></div>
+      </div>
+      <div class="cols-2">
+        <div class="card">
+          <h2>Top 5 reasons <span class="tag">this period, updates live</span></h2>
+          <table><thead><tr><th style="width:40px;">Rank</th><th>Reason</th><th>Count</th><th>% of period</th></tr></thead><tbody id="r-top5"></tbody></table>
+        </div>
+        <div class="card">
+          <h2>Resolution status <span class="tag">this period</span></h2>
+          <table><thead><tr><th>Status</th><th>Count</th><th>% of total</th></tr></thead><tbody id="r-status"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: TRENDS -->
+    <section class="view" id="view-trends">
+      <div class="range-toggle" id="trend-range">
+        <button data-days="7" class="active">7 days</button>
+        <button data-days="14">14 days</button>
+        <button data-days="30">30 days</button>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi"><div class="n" id="t-today">0</div><div class="l">Logged today</div></div>
+        <div class="kpi"><div class="n" id="t-avg">0</div><div class="l">Daily average, this range</div></div>
+        <div class="kpi"><div class="n" id="t-trend">—</div><div class="l">Vs. previous range</div></div>
+      </div>
+      <div class="card">
+        <h2>Daily volume</h2>
+        <div class="chart-wrap"><canvas id="chart-volume"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Resolution status by day</h2>
+        <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Day-by-day breakdown</h2>
+        <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Date</th><th>Total</th><th>Resolved</th><th>In Progress</th><th>Transferred</th><th>Failed</th><th>Top reason that day</th></tr></thead>
+          <tbody id="trend-body"></tbody>
+        </table>
+        </div>
+        <p class="trend-note">Shows how often each reason and resolution outcome comes up, day by day, over the selected range.</p>
+      </div>
+    </section>
+
+    <!-- VIEW 6: MANAGE REASONS -->
+    <section class="view" id="view-reasons">
+      <div class="card">
+        <h2>Client feedback reasons <span class="tag">live, shared list</span></h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Add or remove reasons here — the dropdown on the "Log a Contact" tab updates for everyone immediately. Deleting a reason does not remove past entries that already used it.</p>
+        <div class="reason-list" id="reason-list"></div>
+        <div class="add-reason-row">
+          <input type="text" id="new-reason" placeholder="e.g. Late payment notice">
+          <button class="secondary" id="btn-add-reason">Add reason</button>
+        </div>
+        <span class="save-note" id="reason-note"></span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   FIREBASE SETUP — replace with your own project's config.
+   1. console.firebase.google.com → create a project (free tier is fine)
+   2. Project settings → add a Web app → copy the config object below
+   3. Build → Realtime Database → Create database (start in test mode,
+      then tighten rules once you know it works)
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBQGaT1LU04Ox5Qzm-QA1uvYaptzcdRYG4",
+  authDomain: "ray-twin.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "ray-twin",
+  storageBucket: "ray-twin.firebasestorage.app",
+  messagingSenderId: "779722567153",
+  appId: "1:779722567153:web:94bfea85ee28917b8e6850"
+};
+
+const isConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+let db = null;
+if(isConfigured){
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+}else{
+  document.getElementById("setup-banner").style.display = "block";
+}
+
+const CATEGORIES = ["Collection(Inbound)","Sales(Inbound)","Emails"];
+const DEFAULT_REASONS = ["Interest Complaint","Missed call(NOK)","Balance transfer/Explanation","Loan Statement/Quotation",
+  "Debit Issue","Account on hold","CRB","Push to pay","USSD failure(Pay)","Account explanation","Kwika",
+  "USSD failure(Borrow)","Zako Loan calculator","Work confirmation","Branch direction","Disbursement issue",
+  "General Inquiry","Product Information","Compliment"];
+const AGENTS = ["Jupiter Atuhaire","Beatrice","Grace","Rinah","Josephine"];
+const STATUSES = ["Resolved","In Progress","Transferred","Failed"];
+
+let entries = [];       // [{id, date, agent, client, category, reason, resolved, status}]
+let reasons = [];       // [{id, name}]
+let trendDays = 7;
+let chartVolume = null;
+let chartStatus = null;
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+function fillSelect(sel, items, withBlank){
+  const current = sel.value;
+  sel.innerHTML = "";
+  if(withBlank){
+    sel.appendChild(new Option("Select…",""));
+  }
+  items.forEach(i=> sel.appendChild(new Option(i, i)));
+  if(items.includes(current)) sel.value = current;
+}
+
+function reasonNames(){ return reasons.map(r=>r.name); }
+
+function initStaticOptions(){
+  fillSelect(document.getElementById("f-agent"), AGENTS, true);
+  fillSelect(document.getElementById("f-category"), CATEGORIES, true);
+  fillSelect(document.getElementById("f-status"), STATUSES, true);
+  document.getElementById("f-date").value = todayISO();
+
+  const fa = document.getElementById("filter-agent");
+  fillSelect(fa, AGENTS, false); fa.insertBefore(new Option("All agents",""), fa.firstChild);
+  const fc = document.getElementById("filter-category");
+  fillSelect(fc, CATEGORIES, false); fc.insertBefore(new Option("All categories",""), fc.firstChild);
+  const fs = document.getElementById("filter-status");
+  fillSelect(fs, STATUSES, false); fs.insertBefore(new Option("All follow-up statuses",""), fs.firstChild);
+}
+
+function refreshReasonSelect(){
+  fillSelect(document.getElementById("f-reason"), reasonNames(), true);
+}
+
+/* ---------------- Firebase live sync ---------------- */
+function startSync(){
+  if(!isConfigured){
+    // Offline demo mode so the UI is still explorable without a Firebase project.
+    reasons = DEFAULT_REASONS.map((name,i)=>({id:"demo"+i, name}));
+    refreshReasonSelect();
+    renderAll();
+    return;
+  }
+
+  db.ref(".info/connected").on("value", snap=>{
+    const ind = document.getElementById("conn-indicator");
+    const label = document.getElementById("conn-label");
+    if(snap.val()===true){ ind.className = "conn live"; label.textContent = "Live"; }
+    else{ ind.className = "conn off"; label.textContent = "Offline"; }
+  });
+
+  db.ref("entries").on("value", snap=>{
+    const val = snap.val() || {};
+    entries = Object.keys(val).map(id=>({id, ...val[id]})).sort((a,b)=> (b.date||"").localeCompare(a.date||"") || b.id.localeCompare(a.id));
+    renderAll();
+  });
+
+  db.ref("options/reasons").once("value").then(snap=>{
+    if(!snap.exists()){
+      const updates = {};
+      DEFAULT_REASONS.forEach(name=>{ updates[db.ref("options/reasons").push().key] = name; });
+      db.ref("options/reasons").set(updates);
+    }
+  });
+
+  db.ref("options/reasons").on("value", snap=>{
+    const val = snap.val() || {};
+    reasons = Object.keys(val).map(id=>({id, name: val[id]})).sort((a,b)=>a.name.localeCompare(b.name));
+    refreshReasonSelect();
+    renderReasonList();
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderTable();
+  renderDashboard();
+  renderReport();
+  renderTrends();
+}
+
+/* ---------------- nav ---------------- */
+const titles = {
+  log: ["Log a Contact","Record a call or email exactly as it came in."],
+  table: ["Feedback Log","Every entry logged by the team, newest first."],
+  dash: ["Dashboard","Live breakdown across every logged entry."],
+  report: ["Report","Pick a date range to see performance for that period."],
+  trends: ["Trends","How volume, reasons, and resolution are moving day to day."],
+  reasons: ["Manage Reasons","Keep the feedback reason list current for the whole team."]
+};
+document.querySelectorAll(".nav-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const view = btn.dataset.view;
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+view).classList.add("active");
+    document.getElementById("page-title").textContent = titles[view][0];
+    document.getElementById("page-sub").textContent = titles[view][1];
+    renderAll();
+  });
+});
+
+/* ---------------- save entry ---------------- */
+document.getElementById("btn-save").addEventListener("click", async ()=>{
+  const date = document.getElementById("f-date").value;
+  const agent = document.getElementById("f-agent").value;
+  const client = document.getElementById("f-client").value.trim();
+  const category = document.getElementById("f-category").value;
+  const reason = document.getElementById("f-reason").value;
+  const resolved = document.getElementById("f-resolved").value;
+  const status = document.getElementById("f-status").value;
+  const note = document.getElementById("save-note");
+
+  if(!date || !agent || !category || !reason){
+    note.textContent = "Please fill in date, agent, category and reason.";
+    note.className = "save-note err";
+    return;
+  }
+  const btn = document.getElementById("btn-save");
+  btn.disabled = true;
+  const entry = { date, agent, client, category, reason, resolved, status };
+  try{
+    if(isConfigured){
+      await db.ref("entries").push(entry);
+    }else{
+      entries.unshift({ id: "local"+Date.now(), ...entry });
+      renderAll();
+    }
+    note.textContent = "Entry logged.";
+    note.className = "save-note ok";
+    document.getElementById("f-client").value = "";
+    document.getElementById("f-reason").value = "";
+    document.getElementById("f-resolved").value = "";
+    document.getElementById("f-status").value = "";
+  }catch(e){
+    note.textContent = "Couldn't save — check your connection.";
+    note.className = "save-note err";
+  }
+  btn.disabled = false;
+  setTimeout(()=>{ note.textContent=""; note.className="save-note"; }, 3000);
+});
+
+/* ---------------- table view ---------------- */
+function statusChip(status){
+  if(!status) return '<span class="status-chip status-none">—</span>';
+  const map = { "Resolved":"status-resolved","In Progress":"status-inprogress","Transferred":"status-transferred","Failed":"status-failed" };
+  return `<span class="status-chip ${map[status]||'status-none'}">${status}</span>`;
+}
+
+function filteredEntries(){
+  const agent = document.getElementById("filter-agent").value;
+  const category = document.getElementById("filter-category").value;
+  const status = document.getElementById("filter-status").value;
+  return entries.filter(e=>
+    (!agent || e.agent===agent) &&
+    (!category || e.category===category) &&
+    (!status || e.status===status)
+  );
+}
+
+function renderTable(){
+  const body = document.getElementById("log-body");
+  const rows = filteredEntries();
+  document.getElementById("log-count").textContent = rows.length + " of " + entries.length + " entries";
+  if(rows.length===0){
+    body.innerHTML = `<tr><td colspan="8" class="empty-row">No entries match — log one from the "Log a Contact" tab.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(e=>`
+    <tr>
+      <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.category||""}</td>
+      <td>${e.reason||""}</td><td>${e.resolved||"—"}</td><td>${statusChip(e.status)}</td>
+      <td><button class="del-btn" data-id="${e.id}">Remove</button></td>
+    </tr>
+  `).join("");
+  body.querySelectorAll(".del-btn").forEach(b=>{
+    b.addEventListener("click", async ()=>{
+      if(isConfigured){ await db.ref("entries/"+b.dataset.id).remove(); }
+      else{ entries = entries.filter(e=>e.id!==b.dataset.id); renderAll(); }
+    });
+  });
+}
+["filter-agent","filter-category","filter-status"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", renderTable);
+});
+
+/* ---------------- dashboard ---------------- */
+function pct(n, total){ return total>0 ? (n/total*100) : 0; }
+function fmtPct(p){ return p.toFixed(1)+"%"; }
+
+function renderDashboard(){
+  const total = entries.length;
+  document.getElementById("kpi-total").textContent = total;
+
+  const resolvedOnCall = entries.filter(e=>e.resolved==="Yes").length;
+  document.getElementById("kpi-resolved").textContent = total ? fmtPct(pct(resolvedOnCall,total)) : "0%";
+
+  const open = entries.filter(e=> e.status==="In Progress" || e.status==="Transferred" || (!e.status && !e.resolved)).length;
+  document.getElementById("kpi-open").textContent = open;
+
+  const catCounts = CATEGORIES.map(c=>({name:c, count: entries.filter(e=>e.category===c).length}));
+  const topCat = catCounts.slice().sort((a,b)=>b.count-a.count)[0];
+  document.getElementById("kpi-topcat").textContent = (topCat && topCat.count>0) ? topCat.name.replace("(Inbound)","") : "—";
+
+  document.getElementById("dash-cat").innerHTML = catCounts.map(c=>`
+    <tr><td>${c.name}</td><td>${c.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(c.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(c.count,total))}</span></td></tr>
+  `).join("") + `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td></tr>`;
+
+  const statusCounts = STATUSES.map(s=>({name:s, count: entries.filter(e=>e.status===s).length}));
+  document.getElementById("dash-status").innerHTML = statusCounts.map(s=>`
+    <tr><td>${statusChip(s.name)}</td><td>${s.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill brass" style="width:${pct(s.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(s.count,total))}</span></td></tr>
+  `).join("");
+
+  const reasonCounts = reasonNames().map(r=>({name:r, count: entries.filter(e=>e.reason===r).length}))
+    .sort((a,b)=>b.count-a.count);
+  document.getElementById("dash-reason").innerHTML = reasonCounts.map(r=>`
+    <tr><td>${r.name}</td><td>${r.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(r.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(r.count,total))}</span></td></tr>
+  `).join("") || `<tr><td colspan="3" class="empty-row">No reasons configured yet.</td></tr>`;
+}
+
+/* ---------------- report ---------------- */
+function inRange(dateStr, start, end){
+  if(!dateStr) return false;
+  if(start && dateStr < start) return false;
+  if(end && dateStr > end) return false;
+  return true;
+}
+
+function renderReport(){
+  const start = document.getElementById("r-start").value;
+  const end = document.getElementById("r-end").value;
+  const rows = entries.filter(e=>inRange(e.date, start, end));
+  const total = rows.length;
+  document.getElementById("r-total").textContent = total;
+
+  const resolved = rows.filter(e=>e.status==="Resolved").length;
+  document.getElementById("r-resolved-pct").textContent = total ? fmtPct(pct(resolved,total)) : "0%";
+
+  const reasonCounts = reasonNames().map(r=>({name:r, count: rows.filter(e=>e.reason===r).length}))
+    .sort((a,b)=>b.count-a.count);
+  const top5 = reasonCounts.slice(0,5);
+  document.getElementById("r-top-reason").textContent = (top5[0] && top5[0].count>0) ? top5[0].name : "—";
+
+  document.getElementById("r-top5").innerHTML = top5.map((r,i)=>`
+    <tr><td><span class="rank-badge">${i+1}</span></td><td>${r.name}</td><td>${r.count}</td><td>${fmtPct(pct(r.count,total))}</td></tr>
+  `).join("") || `<tr><td colspan="4" class="empty-row">No entries in this period.</td></tr>`;
+
+  const statusCounts = STATUSES.map(s=>({name:s, count: rows.filter(e=>e.status===s).length}));
+  document.getElementById("r-status").innerHTML = statusCounts.map(s=>`
+    <tr><td>${statusChip(s.name)}</td><td>${s.count}</td><td>${fmtPct(pct(s.count,total))}</td></tr>
+  `).join("");
+}
+document.getElementById("r-start").addEventListener("change", renderReport);
+document.getElementById("r-end").addEventListener("change", renderReport);
+
+/* ---------------- trends ---------------- */
+document.querySelectorAll("#trend-range button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#trend-range button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    trendDays = parseInt(btn.dataset.days, 10);
+    renderTrends();
+  });
+});
+
+function lastNDays(n){
+  const out = [];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    out.push(d.toISOString().slice(0,10));
+  }
+  return out;
+}
+
+function renderTrends(){
+  const days = lastNDays(trendDays);
+  const today = todayISO();
+  document.getElementById("t-today").textContent = entries.filter(e=>e.date===today).length;
+
+  const dayStats = days.map(d=>{
+    const rows = entries.filter(e=>e.date===d);
+    const byStatus = {};
+    STATUSES.forEach(s=> byStatus[s] = rows.filter(e=>e.status===s).length);
+    const reasonCounts = reasonNames().map(r=>({name:r, count: rows.filter(e=>e.reason===r).length})).sort((a,b)=>b.count-a.count);
+    const top = reasonCounts[0] && reasonCounts[0].count>0 ? reasonCounts[0].name : "—";
+    return { date:d, total: rows.length, ...byStatus, top };
+  });
+
+  const totalThisRange = dayStats.reduce((s,d)=>s+d.total,0);
+  const avg = trendDays ? (totalThisRange/trendDays) : 0;
+  document.getElementById("t-avg").textContent = avg.toFixed(1);
+
+  // previous range for comparison
+  const prevDays = [];
+  for(let i=trendDays*2-1;i>=trendDays;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    prevDays.push(d.toISOString().slice(0,10));
+  }
+  const totalPrevRange = entries.filter(e=>prevDays.includes(e.date)).length;
+  const trendEl = document.getElementById("t-trend");
+  if(totalPrevRange===0 && totalThisRange===0){
+    trendEl.textContent = "—";
+  }else if(totalPrevRange===0){
+    trendEl.textContent = "New activity";
+  }else{
+    const delta = ((totalThisRange-totalPrevRange)/totalPrevRange)*100;
+    trendEl.textContent = (delta>=0?"+":"") + delta.toFixed(0) + "%";
+  }
+
+  // day breakdown table
+  document.getElementById("trend-body").innerHTML = dayStats.map(d=>`
+    <tr><td>${d.date}</td><td>${d.total}</td><td>${d.Resolved||0}</td><td>${d["In Progress"]||0}</td>
+      <td>${d.Transferred||0}</td><td>${d.Failed||0}</td><td>${d.top}</td></tr>
+  `).join("");
+
+  // charts
+  const labels = dayStats.map(d=> d.date.slice(5));
+  if(typeof Chart !== "undefined"){
+    const volCtx = document.getElementById("chart-volume").getContext("2d");
+    if(chartVolume) chartVolume.destroy();
+    chartVolume = new Chart(volCtx, {
+      type: "bar",
+      data: { labels, datasets: [{ label:"Entries logged", data: dayStats.map(d=>d.total), backgroundColor:"#2F7A5E", borderRadius:4 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+
+    const stCtx = document.getElementById("chart-status").getContext("2d");
+    if(chartStatus) chartStatus.destroy();
+    chartStatus = new Chart(stCtx, {
+      type:"bar",
+      data:{ labels, datasets:[
+        { label:"Resolved", data: dayStats.map(d=>d.Resolved||0), backgroundColor:"#2F7A5E" },
+        { label:"In Progress", data: dayStats.map(d=>d["In Progress"]||0), backgroundColor:"#B8863B" },
+        { label:"Transferred", data: dayStats.map(d=>d.Transferred||0), backgroundColor:"#5C74B8" },
+        { label:"Failed", data: dayStats.map(d=>d.Failed||0), backgroundColor:"#A23B3B" }
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+  }
+}
+
+/* ---------------- manage reasons ---------------- */
+function renderReasonList(){
+  const wrap = document.getElementById("reason-list");
+  if(reasons.length===0){
+    wrap.innerHTML = `<span class="empty-row">No reasons yet — add the first one below.</span>`;
+    return;
+  }
+  wrap.innerHTML = reasons.map(r=>`
+    <span class="reason-chip">${r.name}<button data-id="${r.id}" title="Remove">×</button></span>
+  `).join("");
+  wrap.querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", async ()=>{
+      if(isConfigured){ await db.ref("options/reasons/"+b.dataset.id).remove(); }
+      else{ reasons = reasons.filter(r=>r.id!==b.dataset.id); refreshReasonSelect(); renderReasonList(); renderAll(); }
+    });
+  });
+}
+
+document.getElementById("btn-add-reason").addEventListener("click", async ()=>{
+  const input = document.getElementById("new-reason");
+  const note = document.getElementById("reason-note");
+  const name = input.value.trim();
+  if(!name){ note.textContent="Type a reason first."; note.className="save-note err"; return; }
+  if(reasonNames().some(r=>r.toLowerCase()===name.toLowerCase())){
+    note.textContent = "That reason already exists."; note.className="save-note err"; return;
+  }
+  if(isConfigured){
+    await db.ref("options/reasons").push(name);
+  }else{
+    reasons.push({id:"local"+Date.now(), name});
+    refreshReasonSelect(); renderReasonList(); renderAll();
+  }
+  input.value = "";
+  note.textContent = "Reason added."; note.className = "save-note ok";
+  setTimeout(()=>{ note.textContent=""; note.className="save-note"; }, 2500);
+});
+
+/* ---------------- clock ---------------- */
+function tickClock(){
+  const now = new Date();
+  document.getElementById("clock").innerHTML = now.toLocaleDateString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric'}) + "<br>" + now.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+tickClock();
+setInterval(tickClock, 30000);
+
+/* ---------------- init ---------------- */
+(function init(){
+  initStaticOptions();
+  const today = todayISO();
+  const in12 = new Date(); in12.setDate(in12.getDate()+11);
+  document.getElementById("r-start").value = today;
+  document.getElementById("r-end").value = in12.toISOString().slice(0,10);
+  startSync();
+})();
+</script>
+</body>
+</html>
