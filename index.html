@@ -77,6 +77,14 @@
   }
   .leader-link:hover{ color:#fff; text-decoration:underline; }
   #leader-active-badge{ color:#EFE9DA; align-items:center; }
+  .presence-wrap{ margin-top:10px; }
+  .presence-list{ display:flex; flex-wrap:wrap; gap:5px; }
+  .presence-chip{
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(255,255,255,0.07); color:#EFE9DA; font-size:11px;
+    padding:3px 9px 3px 7px; border-radius:12px;
+  }
+  .presence-chip .pdot{ width:6px; height:6px; border-radius:50%; background:var(--signal); flex-shrink:0; }
 
   main{ flex:1; padding:36px 44px 60px; max-width:1180px; }
   header.page-head{
@@ -221,6 +229,27 @@
     letter-spacing:0.05em; color:var(--brass-soft); margin-bottom:6px;
   }
 
+  .email-row{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; overflow:hidden; background:#FCFBF8; }
+  .email-row-head{
+    all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+    width:100%; box-sizing:border-box; padding:12px 16px; font-size:13.5px; font-weight:600; color:var(--ink);
+  }
+  .email-row-head .chev{ font-size:11px; color:var(--muted); transition:transform .15s ease; }
+  .email-row.open .chev{ transform:rotate(180deg); }
+  .email-row-head.no-email{ color:var(--muted); cursor:default; font-weight:500; }
+  .email-body{ display:none; padding:0 16px 16px; }
+  .email-row.open .email-body{ display:block; }
+  .email-text{
+    white-space:pre-wrap; font-family:'Inter',sans-serif; font-size:13px; line-height:1.6;
+    background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:10px;
+  }
+  .copy-btn{
+    all:unset; cursor:pointer; background:var(--deep); color:#EFE9DA; font-size:12.5px; font-weight:600;
+    padding:7px 16px; border-radius:7px;
+  }
+  .copy-btn:hover{ background:#0A1F19; }
+  .copy-btn.copied{ background:var(--signal); }
+
   #print-report{ display:none; }
   @media print{
     body *{ visibility:hidden; }
@@ -262,6 +291,7 @@
       <button class="leader-link" id="btn-leader-logout" style="margin-left:auto;">Sign out</button>
     </div>
     <div class="conn off" id="conn-indicator"><span class="dot"></span><span id="conn-label">Connecting…</span></div>
+    <div class="presence-wrap" id="presence-wrap"><div class="presence-list" id="presence-list"></div></div>
     <div class="foot">Live shared log — every entry, edit, and reason change is visible to <span>everyone with this link</span>, instantly.</div>
   </aside>
 
@@ -300,9 +330,15 @@
       </div>
 
       <div class="card">
-        <h2>Quick reply guide <span class="tag">hover a reason for how to respond</span></h2>
-        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Hover over any reason below to see a simple suggested reply (tap on a touchscreen). <strong style="color:var(--signal);">Green</strong> = from the team's knowledge bank. <strong style="color:#8A5A18;">Amber</strong> = a draft — check with your leader before relying on it.</p>
-        <div class="reply-grid" id="reply-grid"></div>
+        <h2>📞 For calls <span class="tag">hover a reason for what to say</span></h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Hover over any reason below for a simple talking-point (tap on a touchscreen).</p>
+        <div class="reply-grid" id="reply-grid-call"></div>
+      </div>
+
+      <div class="card">
+        <h2>✉️ For emails <span class="tag">ready to copy &amp; paste</span></h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Click a reason to open a full email you can copy straight into your reply. Swap the bracketed [placeholders] for the real details before sending.</p>
+        <div id="email-guide-list"></div>
       </div>
     </section>
 
@@ -418,7 +454,7 @@
         <h2>Add a new reason</h2>
         <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">The dropdown on "Log a Contact" updates for everyone immediately.</p>
         <div class="field"><label>Reason name</label><input type="text" id="new-reason" placeholder="e.g. Late payment notice"></div>
-        <div class="field" style="margin-top:14px;"><label>Reply guide (optional)</label><textarea id="new-reason-guide" rows="3" placeholder="How should agents respond when this reason comes up?"></textarea></div>
+        <div class="field" style="margin-top:14px;"><label>Call script (optional)</label><textarea id="new-reason-guide" rows="3" placeholder="What should an agent say on a call for this reason? Add an email template afterward, in the list below."></textarea></div>
         <div class="form-actions">
           <button class="secondary" id="btn-add-reason">Add reason</button>
           <span class="save-note" id="reason-note"></span>
@@ -475,31 +511,97 @@ const NEW_KNOWLEDGE_BANK_REASONS = ["Limit Increase","Resignation / Job Loss","C
 
 /* Quick reply guide — seed scripts used only to pre-fill the database the first time
    a matching reason is seen with no guide saved yet. After that, the real content
-   lives in Firebase under options/replyGuides and is edited from Manage Reasons —
-   this map is never read from directly at render time. */
+   lives in Firebase under options/replyGuides (as {call, email} per reason) and is
+   edited from Manage Reasons — this map is never read from directly at render time. */
 const VERIFIED_SEED_GUIDES = {
-  "balance transfer/explanation": "Say you're sorry if they mentioned a hard situation. Then explain simply: paying at least the minimum amount keeps their account in good standing and completes this month's balance transfer. Missing it can add extra charges and a bad CRB report. Ask them to pay as soon as they can, and thank them for understanding.",
-  "account explanation": "Explain calmly: CRB reports are sent once a month, at month end. Penalties only apply if a loan goes into default (as per their agreement) and include interest plus collection fees. If they use *282# for a balance transfer, the new minimum amount shows before they confirm — once confirmed, a new loan agreement starts. Point them to operations@ug.unifi.credit for more help.",
-  "crb": "Let them know their file has been sent to CRB for review/clearance, and this usually takes up to 5 working days. Ask them to be patient, and give them CRB's own number (+256 200 518 600) if they want to follow up directly.",
-  "interest complaint": "Explain that a higher interest rate happens when payments are missed or late — it affects their credit score. Paying on time going forward can improve their score and may lower their rate over time. Remind them their loan is a one-term loan, so it can't be split into monthly instalments — but they can still pay more than the minimum to reduce what they owe faster.",
-  "work confirmation": "Apologise for the wait. Let them know work confirmation is still being processed and ask for a little patience. Confirm the branch team will reach out once it's done.",
-  "debit issue": "First check if they actually got paid (e.g. ask about their salary). If a payment was missed or late, explain that penalties and interest keep building as stated in their agreement — this can't be stopped once it's triggered. Offer to clarify anything else they're unsure about.",
-  "product information": "Tell them the 3 things needed to apply: a valid National ID, their most recent bank statement, and proof of income (like a payslip). That's all that's required — they can start on the company website.",
-  "limit increase": "If they've fully cleared a previous balance, thank them — this can qualify them for a higher limit. But if that earlier loan had gone into arrears (bad debt), policy requires a strict 6-month wait from the exact clearance date before they can apply again — this can't be shortened. Tell them the date they become eligible, and that you're happy to help with a fresh application once that date arrives.",
-  "resignation / job loss": "Acknowledge their change in job status kindly. Explain that resigning doesn't cancel the loan — they're still required to clear the full outstanding balance plus any charges, since it was a resignation and not a termination. Share their current balance and minimum due, and remind them they can pay via *282#. Unifi loans are one-term and can't be split into instalments, but paying more than the minimum still helps. Mention that not paying can lead to recovery action, including CRB reporting.",
-  "clearance letter request": "Explain that Unifi doesn't issue separate clearance letters — the official Account Statement is the accepted legal proof of payment, and it already shows a zero balance once cleared. Ask them to share that statement with whoever needs it (e.g. their bank), and have that party send it to clientcare@ug.unifi.credit for verification if needed.",
-  "forwarded to recoveries/legal": "Check the employer on file — sometimes a mismatch is the source of the confusion. Let them know their loan has already moved to the Legal Team, so all next steps go through them, not the regular team. Share the Legal Team's contact: recoveries@ug.legalrapidcollections.com.",
-  "missed call(nok)": "If someone calls back saying they missed our call and says they're the Next of Kin, ask if they're a Unifi client themselves, or if they know someone who is. If yes, remind them about the loan and explain the consequences/benefits based on that client's recency bucket. If they say they don't know any Unifi client, apologise, explain someone may have listed them as next of kin by mistake, let them know we'll find out and call back, and wish them an easy day.",
-  "account on hold": "We put an account on hold when a client misses a required payment. It's unheld automatically as soon as they pay at least their minimum required payment.",
-  "push to pay": "This is when a client calls in saying they have money on their line and wants us to collect it. Tell them their balance and minimum amount due, ask how much they want to pay and which line has the money. Let them know you'll cut the call and send a PIN request message for them to enter their PIN, then call them back. After payment, thank them, guide them on how to transfer, and encourage paying to enjoy benefits or avoid penalties for late payment. If they're in a higher recency bucket and only paying the bare minimum, suggest partial payments, or offer a balance transfer instead so they can decide.",
-  "ussd failure(pay)": "Ask for the exact error message shown and note it down if it keeps failing. Apologise, then ask which number/line they used to pay. Check the USSD journey in Ujuzi to see if it's a real error or a mistake on the client's end. Offer to stay on hold while you check, and offer the Push to Pay process as a fallback while you follow up on the USSD issue.",
-  "kwika": "Kwika are loyalty points clients earn, redeemable as cash. Monthly loyalty payment gives 4,000; a monthly penalty deducts 8,000. Reactivating after being Inactive earns 10,000, and reactivating after being Dormant earns 20,000. Points can be redeemed once they reach 12,000 (=12,000 UGX) — that's the minimum. Clients also earn 20,000 for every friend they refer who becomes a client (ask the friend to mention the referrer's name at the branch). To access Kwika, dial *282# then option 5.",
-  "ussd failure(borrow)": "Same process as USSD failure (Pay), but for borrowing. Check the USSD journey to see where it failed, then advise the client. Remind them that bank disbursement takes about 2 working days to reflect, while mobile wallet is immediate.",
-  "zako loan calculator": "Walk the client through where to find the Zako loan calculator, and the code to access it, so they can estimate their repayment before applying.",
-  "branch direction": "Ask which area the client is in, then give them the address and opening hours for their nearest branch.",
-  "disbursement issue": "If a client wants to cancel a loan after disbursement, they have 5 working days from disbursement to request cancellation in writing — either in person at any branch or by email to contactus@ug.unifi.credit (must be sent from the same email used to open their Unifi account). Unifi will only accept the cancellation once the client has fully repaid the loan principal plus any other applicable charges.",
-  "general inquiry": "Listen carefully to what they're asking and answer as clearly as you can. If it doesn't fit a specific category, that's fine — give an honest answer and check with your leader if you're unsure.",
-  "compliment": "Thank the client warmly for their kind words. Let them know their feedback has been noted and will be shared with the team."
+  "balance transfer/explanation": {
+    call: "Say you're sorry if they mentioned a hard situation. Then explain simply: paying at least the minimum amount keeps their account in good standing and completes this month's balance transfer. Missing it can add extra charges and a bad CRB report. Ask them to pay as soon as they can, and thank them for understanding.",
+    email: "Dear [Client Name],\n\nWe're sorry to hear about your situation and understand things can be difficult right now.\n\nTo help you avoid additional charges and a negative CRB report, we kindly advise making at least the minimum payment of [amount] to complete your balance transfer for this month.\n\nMaking this payment will help keep your account in good standing while you manage your current circumstances. Please make the payment as soon as you can.\n\nWe appreciate your understanding.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "account explanation": {
+    call: "Explain calmly: CRB reports are sent once a month, at month end. Penalties only apply if a loan goes into default (as per their agreement) and include interest plus collection fees. If they use *282# for a balance transfer, the new minimum amount shows before they confirm — once confirmed, a new loan agreement starts. Point them to operations@ug.unifi.credit for more help.",
+    email: "Dear [Client Name],\n\nThank you for reaching out for clarification on your account.\n\nPlease note that Unifi submits borrower information to the Credit Reference Bureau (CRB) once at the end of each month.\n\nPenalties are only applied when a loan goes into default, as outlined in your loan agreement. Any penalty charged includes the applicable interest for the new loan period, as well as collection fees.\n\nWhen performing a balance transfer using *282#, the new minimum amount is shown for your review before you confirm. Once confirmed, a new loan agreement is generated and takes effect.\n\nIf you require further clarification, please contact us at operations@ug.unifi.credit.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "crb": {
+    call: "Let them know their file has been sent to CRB for review/clearance, and this usually takes up to 5 working days. Ask them to be patient, and give them CRB's own number (+256 200 518 600) if they want to follow up directly.",
+    email: "Dear [Client Name],\n\nThank you for reaching out regarding your CRB status.\n\nPlease be advised that your account details have been submitted to the Credit Reference Bureau (CRB) for review and clearance. This process typically takes up to five working days to complete.\n\nWe appreciate your patience during this period. Alternatively, you may contact CRB directly on +256 200 518 600 for any follow-up on the status of your clearance.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "interest complaint": {
+    call: "Explain that a higher interest rate happens when payments are missed or late — it affects their credit score. Paying on time going forward can improve their score and may lower their rate over time. Remind them their loan is a one-term loan, so it can't be split into monthly instalments — but they can still pay more than the minimum to reduce what they owe faster.",
+    email: "Dear [Client Name],\n\nThank you for sharing your concerns regarding your interest rate.\n\nThe increase in your interest rate resulted from missed payments, which affected your credit score. Our pricing is based on repayment behaviour, and missed or late payments can lead to a higher interest rate. Continuing to make payments on time can improve your credit score, which may result in a lower rate over time.\n\nPlease note that your Unifi loan is a one-term loan and cannot be restructured into fixed monthly instalments. Your current outstanding balance is [amount]. You may pay [minimum amount] or more to reduce your principal, though the loan will continue to be managed under the agreed one-term conditions.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "work confirmation": {
+    call: "Apologise for the wait. Let them know work confirmation is still being processed and ask for a little patience. Confirm the branch team will reach out once it's done.",
+    email: "Dear [Client Name],\n\nPlease accept our apologies for the delay. Your work confirmation is currently being processed, and we kindly ask for your patience while we complete it.\n\nOur branch team will contact you as soon as the process is finalised.\n\nThank you for your understanding.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "debit issue": {
+    call: "First check if they actually got paid (e.g. ask about their salary). If a payment was missed or late, explain that penalties and interest keep building as stated in their agreement — this can't be stopped once it's triggered. Offer to clarify anything else they're unsure about.",
+    email: "Dear [Client Name],\n\nThank you for reaching out regarding your account.\n\nCould you please confirm whether you received your salary last month? If you did, please note that because the required loan repayment was not made on time, we were unable to prevent penalties from accruing. As stated in your loan agreement, interest continues to accrue in the event of default, and additional collection fees may also apply.\n\nIf you have any questions or need further clarification, please don't hesitate to reach out.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "product information": {
+    call: "Tell them the 3 things needed to apply: a valid National ID, their most recent bank statement, and proof of income (like a payslip). That's all that's required — they can start on the company website.",
+    email: "Dear [Client Name],\n\nThank you for your interest in a Unifi loan.\n\nTo apply, you will need the following three documents:\n- A valid National ID\n- Your most recent bank statement\n- Your latest proof of income (such as a payslip or another accepted proof of salary)\n\nThese are the only requirements needed to access a loan with us. You can start your application by visiting our website: Unifi Uganda.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "limit increase": {
+    call: "If they've fully cleared a previous balance, thank them — this can qualify them for a higher limit. But if that earlier loan had gone into arrears (bad debt), policy requires a strict 6-month wait from the exact clearance date before they can apply again — this can't be shortened. Tell them the date they become eligible, and that you're happy to help with a fresh application once that date arrives.",
+    email: "Dear [Client Name],\n\nThank you for reaching out to Unifi regarding your eligibility for future credit.\n\nFirst, we'd like to acknowledge and thank you for successfully clearing your loan balance on [clearance date]. We appreciate your effort in settling the account.\n\nRegarding your request to access credit sooner: because the previous account fell into arrears, our credit policy requires a strict 6-month waiting period from the exact date the loan was fully cleared before a new application can be processed. We're unable to bypass this requirement.\n\nBased on your clearance date, you will be eligible to reapply starting on [eligibility date].\n\nWe value you as a client and would be glad to look at a fresh application once this period has lapsed.\n\nThank you for your patience and understanding.\n\nBest regards,\n[Your Name]\nUnifi Team"
+  },
+  "resignation / job loss": {
+    call: "Acknowledge their change in job status kindly. Explain that resigning doesn't cancel the loan — they're still required to clear the full outstanding balance plus any charges, since it was a resignation and not a termination. Share their current balance and minimum due, and remind them they can pay via *282#. Unifi loans are one-term and can't be split into instalments, but paying more than the minimum still helps. Mention that not paying can lead to recovery action, including CRB reporting.",
+    email: "Dear [Client Name],\n\nThank you for reaching out. Your request has been noted.\n\nKindly note that since you have resigned from your employment, you are required to settle your loan and clear the outstanding balance to UGX 0.00, including any applicable charges that may be incurred.\n\nYour current loan balance is [balance], and your minimum payment due is [minimum amount]. You can conveniently make your payment by dialling *282#.\n\nWe encourage you to make your payment as soon as possible to avoid additional charges, and to clear your loan to a zero balance.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "clearance letter request": {
+    call: "Explain that Unifi doesn't issue separate clearance letters — the official Account Statement is the accepted legal proof of payment, and it already shows a zero balance once cleared. Ask them to share that statement with whoever needs it (e.g. their bank), and have that party send it to clientcare@ug.unifi.credit for verification if needed.",
+    email: "Dear [Client Name],\n\nThank you for reaching out to Unifi, and congratulations on successfully completing your loan payment. We appreciate your commitment to clearing your account.\n\nPlease be advised that Unifi policy does not issue separate clearance letters. Instead, our official Account Statement serves as the formal and legal proof of payment, and it clearly reflects a zero balance, which is universally accepted for personal financial management and credit reference purposes.\n\nPlease share this statement with your bank (or whoever requires it), and advise them to send it to clientcare@ug.unifi.credit for verification.\n\nThank you for your understanding, and we look forward to serving you again in future.\n\nBest regards,\n[Your Name]\nUnifi Team"
+  },
+  "forwarded to recoveries/legal": {
+    call: "Check the employer on file — sometimes a mismatch is the source of the confusion. Let them know their loan has already moved to the Legal Team, so all next steps go through them, not the regular team. Share the Legal Team's contact: recoveries@ug.legalrapidcollections.com.",
+    email: "Dear [Client Name],\n\nThank you for reaching out.\n\nAccording to our records, your employer on file is [employer name]. Please note that your loan has already been forwarded to our Legal Team, and they will be in touch with you regarding the next steps.\n\nIf you have any questions, kindly contact the Legal Team directly at recoveries@ug.legalrapidcollections.com.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "missed call(nok)": {
+    call: "If someone calls back saying they missed our call and says they're the Next of Kin, ask if they're a Unifi client themselves, or if they know someone who is. If yes, remind them about the loan and explain the consequences/benefits based on that client's recency bucket. If they say they don't know any Unifi client, apologise, explain someone may have listed them as next of kin by mistake, let them know we'll find out and call back, and wish them an easy day.",
+    email: ""
+  },
+  "account on hold": {
+    call: "We put an account on hold when a client misses a required payment. It's unheld automatically as soon as they pay at least their minimum required payment.",
+    email: "Dear [Client Name],\n\nThank you for reaching out regarding your account.\n\nYour account is currently on hold because a required payment was missed. It will be automatically lifted as soon as you make at least your minimum required payment.\n\nPlease let us know if you have any questions.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "push to pay": {
+    call: "This is when a client calls in saying they have money on their line and wants us to collect it. Tell them their balance and minimum amount due, ask how much they want to pay and which line has the money. Let them know you'll cut the call and send a PIN request message for them to enter their PIN, then call them back. After payment, thank them, guide them on how to transfer, and encourage paying to enjoy benefits or avoid penalties for late payment. If they're in a higher recency bucket and only paying the bare minimum, suggest partial payments, or offer a balance transfer instead so they can decide.",
+    email: ""
+  },
+  "ussd failure(pay)": {
+    call: "Ask for the exact error message shown and note it down if it keeps failing. Apologise, then ask which number/line they used to pay. Check the USSD journey in Ujuzi to see if it's a real error or a mistake on the client's end. Offer to stay on hold while you check, and offer the Push to Pay process as a fallback while you follow up on the USSD issue.",
+    email: "Dear [Client Name],\n\nWe're sorry to hear you experienced an issue while trying to make your payment via USSD.\n\nCould you kindly confirm the phone number/line you used to attempt the payment? We will check the transaction journey on our end to see where it may have failed.\n\nPlease note that if a payment session fails partway through, no money is deducted from your account.\n\nWe'll follow up with you once we've reviewed this.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "kwika": {
+    call: "Kwika are loyalty points clients earn, redeemable as cash. Monthly loyalty payment gives 4,000; a monthly penalty deducts 8,000. Reactivating after being Inactive earns 10,000, and reactivating after being Dormant earns 20,000. Points can be redeemed once they reach 12,000 (=12,000 UGX) — that's the minimum. Clients also earn 20,000 for every friend they refer who becomes a client (ask the friend to mention the referrer's name at the branch). To access Kwika, dial *282# then option 5.",
+    email: "Dear [Client Name],\n\nThank you for your interest in Kwika, Unifi's loyalty points programme.\n\nHere's how it works: you earn 4,000 points for a monthly loyalty payment, and 8,000 points are deducted for a monthly penalty. Reactivating after being Inactive earns 10,000 points, and reactivating after being Dormant earns 20,000 points. Points can be redeemed for cash once they reach 12,000 (equivalent to UGX 12,000) — this is the minimum redeemable amount.\n\nYou can also earn 20,000 points for every friend you refer who becomes a Unifi client — just ask them to mention your name at the branch.\n\nTo access Kwika, dial *282# then select option 5.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "ussd failure(borrow)": {
+    call: "Same process as USSD failure (Pay), but for borrowing. Check the USSD journey to see where it failed, then advise the client. Remind them that bank disbursement takes about 2 working days to reflect, while mobile wallet is immediate.",
+    email: "Dear [Client Name],\n\nWe're sorry to hear you had trouble borrowing via USSD.\n\nCould you confirm the phone number/line you used, so we can check the transaction journey and advise where it failed?\n\nAs a reminder: if you choose the bank disbursement option, it takes about two working days for the funds to reflect. If you choose mobile wallet, it's immediate.\n\nWe'll follow up with you shortly.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "zako loan calculator": {
+    call: "Walk the client through where to find the Zako loan calculator, and the code to access it, so they can estimate their repayment before applying.",
+    email: "Dear [Client Name],\n\nThank you for your interest in estimating your loan repayment.\n\nYou can use the Zako Loan Calculator to get an estimate before applying — [access details/code]. Please note the figure it shows is an estimate; your final quote is confirmed once you officially apply.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "branch direction": {
+    call: "Ask which area the client is in, then give them the address and opening hours for their nearest branch.",
+    email: "Dear [Client Name],\n\nThank you for reaching out.\n\nOur nearest branch to you is located at [branch address], and is open [opening hours]. [Add any nearby landmarks here.]\n\nPlease let us know if you need any further directions.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "disbursement issue": {
+    call: "If a client wants to cancel a loan after disbursement, they have 5 working days from disbursement to request cancellation in writing — either in person at any branch or by email to contactus@ug.unifi.credit (must be sent from the same email used to open their Unifi account). Unifi will only accept the cancellation once the client has fully repaid the loan principal plus any other applicable charges.",
+    email: "Dear [Client Name],\n\nThank you for reaching out regarding your loan disbursement.\n\nPlease note that as the Borrower, you have the right to request a cancellation not later than five (5) working days after disbursement. This request must be made in writing, either in person at any Unifi branch, or by email to contactus@ug.unifi.credit (sent from the same email account used to open your Unifi account).\n\nPlease be aware that Unifi will only accept this request after full repayment of the loan principal amount plus any other applicable charges.\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "general inquiry": {
+    call: "Listen carefully to what they're asking and answer as clearly as you can. If it doesn't fit a specific category, that's fine — give an honest answer and check with your leader if you're unsure.",
+    email: "Dear [Client Name],\n\nThank you for reaching out to Unifi.\n\n[Answer their specific question clearly and honestly here. If you're unsure, please check with your leader before responding.]\n\nKind regards,\n[Your Name]\nUnifi Team"
+  },
+  "compliment": {
+    call: "Thank the client warmly for their kind words. Let them know their feedback has been noted and will be shared with the team.",
+    email: "Dear [Client Name],\n\nThank you so much for your kind words — we really appreciate you taking the time to share this with us!\n\nYour feedback has been noted and will be shared with the team.\n\nWarm regards,\n[Your Name]\nUnifi Team"
+  }
 };
 const AGENTS = ["Jupiter Atuhaire","Beatrice","Grace","Rinah","Josephine"];
 
@@ -564,8 +666,13 @@ function maybeSeedReplyGuides(){
   guidesSeeded = true;
   reasons.forEach(r=>{
     const seed = VERIFIED_SEED_GUIDES[r.name.trim().toLowerCase()];
-    if(seed && !replyGuides[r.id]){
+    const existing = replyGuides[r.id];
+    if(!existing && seed){
+      // brand new — seed with both call and email versions
       db.ref("options/replyGuides/"+r.id).set(seed);
+    }else if(existing && typeof existing === "string"){
+      // upgrade a guide saved before call/email were split apart
+      db.ref("options/replyGuides/"+r.id).set({ call: existing, email: (seed && seed.email) || "" });
     }
   });
 }
@@ -1111,17 +1218,28 @@ function renderTrends(){
 }
 
 /* ---------------- quick reply guide (agent-facing) ---------------- */
+function guideCallText(r){
+  const g = replyGuides[r.id];
+  if(!g) return "";
+  return typeof g === "string" ? g : (g.call || "");
+}
+function guideEmailText(r){
+  const g = replyGuides[r.id];
+  if(!g || typeof g === "string") return "";
+  return g.email || "";
+}
+
 function renderReplyGuide(){
-  const wrap = document.getElementById("reply-grid");
+  const wrap = document.getElementById("reply-grid-call");
   if(!wrap) return;
   if(reasons.length===0){
     wrap.innerHTML = `<span class="empty-row">No reasons configured yet.</span>`;
     return;
   }
   wrap.innerHTML = reasons.map(r=>{
-    const guide = replyGuides[r.id];
+    const guide = guideCallText(r);
     if(guide){
-      return `<div class="reply-chip has-guide" tabindex="0">${r.name}<div class="reply-tooltip"><span class="rt-label">Suggested reply</span>${guide}</div></div>`;
+      return `<div class="reply-chip has-guide" tabindex="0">${r.name}<div class="reply-tooltip"><span class="rt-label">What to say</span>${guide}</div></div>`;
     }
     return `<div class="reply-chip">${r.name}</div>`;
   }).join("");
@@ -1134,10 +1252,63 @@ function renderReplyGuide(){
       if(!wasOpen) chip.classList.add("tapped");
     });
   });
+  renderEmailGuideList();
 }
 document.addEventListener("click", ()=>{
   document.querySelectorAll(".reply-chip.tapped").forEach(c=>c.classList.remove("tapped"));
 });
+
+function escapeHtml(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function renderEmailGuideList(){
+  const wrap = document.getElementById("email-guide-list");
+  if(!wrap) return;
+  if(reasons.length===0){
+    wrap.innerHTML = `<span class="empty-row">No reasons configured yet.</span>`;
+    return;
+  }
+  wrap.innerHTML = reasons.map(r=>{
+    const email = guideEmailText(r);
+    if(!email){
+      return `<div class="email-row"><div class="email-row-head no-email">${r.name} <span style="font-weight:400;">— no email template yet</span></div></div>`;
+    }
+    return `
+      <div class="email-row" data-id="${r.id}">
+        <button class="email-row-head" data-id="${r.id}">${r.name} <span class="chev">▼</span></button>
+        <div class="email-body">
+          <div class="email-text">${escapeHtml(email)}</div>
+          <button class="copy-btn" data-id="${r.id}">Copy email</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  wrap.querySelectorAll(".email-row-head:not(.no-email)").forEach(head=>{
+    head.addEventListener("click", ()=>{
+      const row = head.closest(".email-row");
+      const wasOpen = row.classList.contains("open");
+      wrap.querySelectorAll(".email-row.open").forEach(r=>r.classList.remove("open"));
+      if(!wasOpen) row.classList.add("open");
+    });
+  });
+  wrap.querySelectorAll(".copy-btn").forEach(btn=>{
+    btn.addEventListener("click", async (ev)=>{
+      ev.stopPropagation();
+      const id = btn.dataset.id;
+      const r = reasons.find(x=>x.id===id);
+      const text = r ? guideEmailText(r) : "";
+      try{
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied!";
+        btn.classList.add("copied");
+        setTimeout(()=>{ btn.textContent="Copy email"; btn.classList.remove("copied"); }, 1800);
+      }catch(e){
+        btn.textContent = "Couldn't copy — select manually";
+      }
+    });
+  });
+}
 
 /* ---------------- manage reasons (leader-only: add/remove reasons, edit reply guides) ---------------- */
 function renderReasonGuideList(){
@@ -1153,9 +1324,12 @@ function renderReasonGuideList(){
         <strong>${r.name}</strong>
         <button class="del-btn" data-id="${r.id}">Remove reason</button>
       </div>
-      <textarea class="rg-textarea" data-id="${r.id}" rows="3" placeholder="No reply guide yet — write one so agents see it on Log a Contact.">${replyGuides[r.id] || ""}</textarea>
+      <label style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); display:block; margin-bottom:5px;">📞 Call script</label>
+      <textarea class="rg-textarea rg-call" data-id="${r.id}" rows="3" placeholder="What should an agent say on a call for this reason?">${escapeHtml(guideCallText(r))}</textarea>
+      <label style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); display:block; margin:12px 0 5px;">✉️ Email template</label>
+      <textarea class="rg-textarea rg-email" data-id="${r.id}" rows="6" placeholder="Dear [Client Name],&#10;&#10;...&#10;&#10;Kind regards,&#10;[Your Name]&#10;Unifi Team">${escapeHtml(guideEmailText(r))}</textarea>
       <div class="rg-actions">
-        <button class="secondary rg-save" data-id="${r.id}">Save reply</button>
+        <button class="secondary rg-save" data-id="${r.id}">Save both</button>
         <span class="save-note rg-note" data-id="${r.id}"></span>
       </div>
     </div>
@@ -1177,14 +1351,15 @@ function renderReasonGuideList(){
   wrap.querySelectorAll(".rg-save").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
       const id = btn.dataset.id;
-      const textarea = wrap.querySelector(`.rg-textarea[data-id="${id}"]`);
+      const callText = wrap.querySelector(`.rg-call[data-id="${id}"]`).value.trim();
+      const emailText = wrap.querySelector(`.rg-email[data-id="${id}"]`).value.trim();
       const note = wrap.querySelector(`.rg-note[data-id="${id}"]`);
-      const text = textarea.value.trim();
+      const value = { call: callText, email: emailText };
       if(isConfigured){
-        if(text){ await db.ref("options/replyGuides/"+id).set(text); }
+        if(callText || emailText){ await db.ref("options/replyGuides/"+id).set(value); }
         else{ await db.ref("options/replyGuides/"+id).remove(); }
       }else{
-        if(text){ replyGuides[id] = text; } else { delete replyGuides[id]; }
+        if(callText || emailText){ replyGuides[id] = value; } else { delete replyGuides[id]; }
         renderReplyGuide();
       }
       note.textContent = "Saved.";
@@ -1207,11 +1382,11 @@ document.getElementById("btn-add-reason").addEventListener("click", async ()=>{
   if(isConfigured){
     const ref = db.ref("options/reasons").push();
     await ref.set(name);
-    if(guideText){ await db.ref("options/replyGuides/"+ref.key).set(guideText); }
+    if(guideText){ await db.ref("options/replyGuides/"+ref.key).set({ call: guideText, email: "" }); }
   }else{
     const id = "local"+Date.now();
     reasons.push({id, name});
-    if(guideText) replyGuides[id] = guideText;
+    if(guideText) replyGuides[id] = { call: guideText, email: "" };
     refreshReasonSelect(); renderReasonGuideList(); renderReplyGuide(); renderAll();
   }
   input.value = "";
