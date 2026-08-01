@@ -184,19 +184,64 @@
   .chart-wrap{ position:relative; height:220px; }
   .trend-note{ font-size:12px; color:var(--muted); margin-top:10px; }
 
-  .reason-list{ display:flex; flex-wrap:wrap; gap:8px; }
-  .reason-chip{
-    display:flex; align-items:center; gap:8px; background:#FCFBF8; border:1px solid var(--line);
-    border-radius:20px; padding:6px 8px 6px 14px; font-size:13px;
+  .reason-guide-row{
+    border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:12px; background:#FCFBF8;
   }
-  .reason-chip button{
-    all:unset; cursor:pointer; width:18px; height:18px; border-radius:50%; background:var(--fail-soft);
-    color:var(--fail); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
-    line-height:1;
+  .rg-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .rg-head strong{ font-size:14px; }
+  .rg-textarea{
+    width:100%; font-family:'Inter',sans-serif; font-size:13px; padding:9px 10px; border-radius:7px;
+    border:1px solid var(--line); background:#fff; color:var(--ink); resize:vertical; min-height:64px;
   }
-  .reason-chip button:hover{ background:var(--fail); color:#fff; }
-  .add-reason-row{ display:flex; gap:10px; margin-top:18px; }
-  .add-reason-row input{ flex:1; }
+  .rg-textarea:focus{ outline:2px solid var(--signal); outline-offset:1px; border-color:var(--signal); }
+  .rg-actions{ display:flex; align-items:center; gap:12px; margin-top:10px; }
+
+  .reply-grid{ display:flex; flex-wrap:wrap; gap:10px; }
+  .reply-chip{
+    position:relative; cursor:default;
+    background:#FCFBF8; border:1px solid var(--line); border-radius:20px;
+    padding:7px 14px; font-size:12.5px; font-weight:600; color:var(--ink);
+  }
+  .reply-chip.has-guide{ border-color:var(--signal); color:var(--signal); cursor:pointer; }
+  .reply-chip.has-guide::after{
+    content:"?"; display:inline-flex; align-items:center; justify-content:center;
+    width:15px; height:15px; border-radius:50%; background:var(--signal); color:#fff;
+    font-size:10px; font-weight:700; margin-left:7px; vertical-align:middle;
+  }
+  .reply-tooltip{
+    display:none; position:absolute; top:calc(100% + 8px); left:0; z-index:20;
+    width:300px; max-width:70vw; background:var(--deep); color:#EFE9DA;
+    font-size:12.5px; font-weight:400; line-height:1.55; padding:14px 16px;
+    border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.25); text-align:left;
+  }
+  .reply-chip.has-guide:hover .reply-tooltip,
+  .reply-chip.has-guide.tapped .reply-tooltip{ display:block; }
+  .reply-tooltip .rt-label{
+    display:block; font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--brass-soft); margin-bottom:6px;
+  }
+
+  #print-report{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #print-report, #print-report *{ visibility:visible; }
+    #print-report{
+      display:block; position:absolute; top:0; left:0; width:100%;
+      padding:20px; font-family:'Inter',sans-serif; color:#12241E;
+    }
+    #print-report h1{ font-family:'Space Grotesk',sans-serif; font-size:22px; margin-bottom:2px; }
+    #print-report .pr-sub{ color:#6B6459; font-size:12.5px; margin-bottom:22px; }
+    #print-report .pr-kpis{ display:flex; gap:22px; margin-bottom:24px; flex-wrap:wrap; }
+    #print-report .pr-kpi .n{ font-size:24px; font-weight:700; font-family:'Space Grotesk',sans-serif; }
+    #print-report .pr-kpi .l{ font-size:11px; color:#6B6459; text-transform:uppercase; letter-spacing:0.04em; }
+    #print-report .pr-charts{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
+    #print-report .pr-charts img{ max-width:47%; border:1px solid #DCD6C9; border-radius:8px; }
+    #print-report img.pr-wide{ max-width:100%; }
+    #print-report table{ width:100%; border-collapse:collapse; margin-bottom:20px; font-size:12.5px; }
+    #print-report th{ text-align:left; border-bottom:1px solid #12241E; padding:5px 8px; font-size:11px; text-transform:uppercase; }
+    #print-report td{ padding:5px 8px; border-bottom:1px solid #DCD6C9; }
+    #print-report h2{ font-family:'Space Grotesk',sans-serif; font-size:14px; margin:22px 0 8px; }
+  }
 </style>
 </head>
 <body>
@@ -205,11 +250,9 @@
     <div class="brand">Inbound &amp; Email<br>Feedback Tracker<small>Quick Fix Stars · Unifi</small></div>
     <nav>
       <button class="nav-btn active" data-view="log"><span class="num">01</span> Log a Contact</button>
-      <button class="nav-btn leader-only" data-view="table"><span class="num">02</span> Feedback Log</button>
-      <button class="nav-btn leader-only" data-view="dash"><span class="num">03</span> Dashboard</button>
-      <button class="nav-btn leader-only" data-view="report"><span class="num">04</span> Report</button>
-      <button class="nav-btn leader-only" data-view="trends"><span class="num">05</span> Trends</button>
-      <button class="nav-btn leader-only" data-view="reasons"><span class="num">06</span> Manage Reasons</button>
+      <button class="nav-btn leader-only" data-view="insights"><span class="num">02</span> Insights</button>
+      <button class="nav-btn leader-only" data-view="trends"><span class="num">03</span> Trends</button>
+      <button class="nav-btn leader-only" data-view="reasons"><span class="num">04</span> Manage Reasons</button>
     </nav>
     <div class="leader-gate" id="leader-gate">
       <button class="leader-link" id="btn-leader-login">Leader sign-in</button>
@@ -255,10 +298,75 @@
           <span class="save-note" id="save-note"></span>
         </div>
       </div>
+
+      <div class="card">
+        <h2>Quick reply guide <span class="tag">hover a reason for how to respond</span></h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Hover over any reason below to see a simple suggested reply (tap on a touchscreen). <strong style="color:var(--signal);">Green</strong> = from the team's knowledge bank. <strong style="color:#8A5A18;">Amber</strong> = a draft — check with your leader before relying on it.</p>
+        <div class="reply-grid" id="reply-grid"></div>
+      </div>
     </section>
 
-    <!-- VIEW 2: FEEDBACK LOG -->
-    <section class="view" id="view-table">
+    <!-- VIEW 2: INSIGHTS (merges the old Feedback Log + Dashboard + Report) -->
+    <section class="view" id="view-insights">
+      <div class="card" id="migration-card" style="display:none; border-color:var(--brass);">
+        <h2 style="color:#8A5A18;">Fix entries logged before this update <span class="tag">one-time cleanup</span></h2>
+        <p class="trend-note" id="migration-summary" style="margin-top:-8px; margin-bottom:16px;"></p>
+        <button class="secondary" id="btn-run-migration">Fix now</button>
+        <span class="save-note" id="migration-note"></span>
+        <div id="migration-manual-list" style="margin-top:16px;"></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+          <div class="range-toggle" id="period-toggle">
+            <button data-period="today">Today</button>
+            <button data-period="week">This week</button>
+            <button data-period="month">This month</button>
+            <button data-period="all" class="active">All time</button>
+            <button data-period="custom">Custom</button>
+          </div>
+          <button class="primary" id="btn-generate-report">Generate report</button>
+        </div>
+        <div class="range-row" id="custom-range-row" style="display:none; margin-top:14px;">
+          <div class="field"><label>Start date</label><input type="date" id="i-start"></div>
+          <div class="field"><label>End date</label><input type="date" id="i-end"></div>
+        </div>
+        <p class="trend-note" id="period-label" style="margin-top:14px; margin-bottom:0;"></p>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="n" id="i-total">0</div><div class="l">Total contacts</div></div>
+        <div class="kpi"><div class="n" id="i-calls">0</div><div class="l">Inbound calls</div></div>
+        <div class="kpi"><div class="n" id="i-emails">0</div><div class="l">Emails</div></div>
+        <div class="kpi"><div class="n" id="i-topreason">—</div><div class="l">Most common feedback</div></div>
+      </div>
+
+      <div class="cols-2">
+        <div class="card">
+          <h2>Channel split <span class="tag">calls vs. emails</span></h2>
+          <div class="chart-wrap" style="height:210px;"><canvas id="chart-channel"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Topic split <span class="tag">collections vs. sales</span></h2>
+          <div class="chart-wrap" style="height:210px;"><canvas id="chart-topic"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Top feedback reasons <span class="tag">ranked by volume, this period</span></h2>
+        <div class="chart-wrap" id="reasons-chart-wrap" style="height:280px;"><canvas id="chart-reasons"></canvas></div>
+      </div>
+
+      <div class="card" id="daily-chart-card">
+        <h2>Daily volume <span class="tag">calls vs. emails, this period</span></h2>
+        <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+        <p class="trend-note" id="daily-chart-note" style="display:none;">This period spans too many days to chart clearly here — switch to This Week, This Month, or a shorter Custom range to see the daily breakdown. Check the Trends tab for longer-range daily detail.</p>
+      </div>
+
+      <div class="card">
+        <h2>Topic × Channel <span class="tag">where each topic is coming from</span></h2>
+        <table><thead><tr><th>Combination</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-cross"></tbody></table>
+      </div>
+
       <div class="card">
         <h2>All logged entries</h2>
         <div class="log-toolbar">
@@ -276,60 +384,7 @@
       </div>
     </section>
 
-    <!-- VIEW 3: DASHBOARD -->
-    <section class="view" id="view-dash">
-      <div class="kpis">
-        <div class="kpi"><div class="n" id="kpi-total">0</div><div class="l">Total contacts logged</div></div>
-        <div class="kpi"><div class="n" id="kpi-calls">0</div><div class="l">Inbound calls</div></div>
-        <div class="kpi"><div class="n" id="kpi-emails">0</div><div class="l">Emails</div></div>
-        <div class="kpi"><div class="n" id="kpi-topreason">—</div><div class="l">Most common feedback</div></div>
-      </div>
-      <div class="cols-2">
-        <div class="card">
-          <h2>Channel breakdown <span class="tag">calls vs. emails, tracked separately</span></h2>
-          <table><thead><tr><th>Channel</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-channel"></tbody></table>
-        </div>
-        <div class="card">
-          <h2>Topic breakdown <span class="tag">collections vs. sales</span></h2>
-          <table><thead><tr><th>Topic</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-topic"></tbody></table>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Topic × Channel <span class="tag">where each topic is coming from</span></h2>
-        <table><thead><tr><th>Combination</th><th>Count</th><th>% of total</th></tr></thead><tbody id="dash-cross"></tbody></table>
-      </div>
-      <div class="card">
-        <h2>Client feedback — reason breakdown <span class="tag">live, ranked by volume</span></h2>
-        <table><thead><tr><th>Reason</th><th>Count</th><th style="width:220px;">% of all contacts logged</th></tr></thead><tbody id="dash-reason"></tbody></table>
-      </div>
-    </section>
-
-    <!-- VIEW 4: REPORT -->
-    <section class="view" id="view-report">
-      <div class="card">
-        <h2>Reporting period</h2>
-        <div class="range-row">
-          <div class="field"><label>Start date</label><input type="date" id="r-start"></div>
-          <div class="field"><label>End date</label><input type="date" id="r-end"></div>
-        </div>
-      </div>
-      <div class="kpis">
-        <div class="kpi"><div class="n" id="r-total">0</div><div class="l">Contacts in period</div></div>
-        <div class="kpi"><div class="n" id="r-calls">0</div><div class="l">Inbound calls</div></div>
-        <div class="kpi"><div class="n" id="r-emails">0</div><div class="l">Emails</div></div>
-        <div class="kpi"><div class="n" id="r-top-reason">—</div><div class="l">Top reason</div></div>
-      </div>
-      <div class="card">
-        <h2>Top 5 reasons <span class="tag">this period, updates live</span></h2>
-        <table><thead><tr><th style="width:40px;">Rank</th><th>Reason</th><th>Count</th><th>% of period</th></tr></thead><tbody id="r-top5"></tbody></table>
-      </div>
-      <div class="card">
-        <h2>Topic split <span class="tag">collections vs. sales, this period</span></h2>
-        <table><thead><tr><th>Topic</th><th>Count</th><th>% of period</th></tr></thead><tbody id="r-topic"></tbody></table>
-      </div>
-    </section>
-
-    <!-- VIEW 5: TRENDS -->
+    <!-- VIEW 3: TRENDS -->
     <section class="view" id="view-trends">
       <div class="range-toggle" id="trend-range">
         <button data-days="7" class="active">7 days</button>
@@ -357,21 +412,29 @@
       </div>
     </section>
 
-    <!-- VIEW 6: MANAGE REASONS -->
+    <!-- VIEW 4: MANAGE REASONS -->
     <section class="view" id="view-reasons">
       <div class="card">
-        <h2>Client feedback reasons <span class="tag">live, shared list</span></h2>
-        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Add or remove reasons here — the dropdown on the "Log a Contact" tab updates for everyone immediately. Deleting a reason does not remove past entries that already used it.</p>
-        <div class="reason-list" id="reason-list"></div>
-        <div class="add-reason-row">
-          <input type="text" id="new-reason" placeholder="e.g. Late payment notice">
+        <h2>Add a new reason</h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">The dropdown on "Log a Contact" updates for everyone immediately.</p>
+        <div class="field"><label>Reason name</label><input type="text" id="new-reason" placeholder="e.g. Late payment notice"></div>
+        <div class="field" style="margin-top:14px;"><label>Reply guide (optional)</label><textarea id="new-reason-guide" rows="3" placeholder="How should agents respond when this reason comes up?"></textarea></div>
+        <div class="form-actions">
           <button class="secondary" id="btn-add-reason">Add reason</button>
+          <span class="save-note" id="reason-note"></span>
         </div>
-        <span class="save-note" id="reason-note"></span>
+      </div>
+      <div class="card">
+        <h2>Reasons &amp; reply guides <span class="tag">only editable here, by the leader</span></h2>
+        <p class="trend-note" style="margin-top:-8px; margin-bottom:16px;">Deleting a reason does not remove past entries that already used it. Reply guide changes save instantly and update on "Log a Contact" for everyone.</p>
+        <div id="reason-guide-list"></div>
       </div>
     </section>
   </main>
 </div>
+
+<!-- Printable report — hidden on screen, shown only when printing via Generate Report -->
+<div id="print-report"></div>
 
 <script>
 /* ============================================================
@@ -405,16 +468,49 @@ const TOPICS = ["Collections","Sales"];
 const DEFAULT_REASONS = ["Interest Complaint","Missed call(NOK)","Balance transfer/Explanation","Loan Statement/Quotation",
   "Debit Issue","Account on hold","CRB","Push to pay","USSD failure(Pay)","Account explanation","Kwika",
   "USSD failure(Borrow)","Zako Loan calculator","Work confirmation","Branch direction","Disbursement issue",
-  "General Inquiry","Product Information","Compliment"];
+  "General Inquiry","Product Information","Compliment",
+  "Limit Increase","Resignation / Job Loss","Clearance Letter Request","Forwarded to Recoveries/Legal"];
+/* Reasons added straight from the team's knowledge bank so their scripted replies (below) have somewhere to attach to. */
+const NEW_KNOWLEDGE_BANK_REASONS = ["Limit Increase","Resignation / Job Loss","Clearance Letter Request","Forwarded to Recoveries/Legal"];
+
+/* Quick reply guide — seed scripts used only to pre-fill the database the first time
+   a matching reason is seen with no guide saved yet. After that, the real content
+   lives in Firebase under options/replyGuides and is edited from Manage Reasons —
+   this map is never read from directly at render time. */
+const VERIFIED_SEED_GUIDES = {
+  "balance transfer/explanation": "Say you're sorry if they mentioned a hard situation. Then explain simply: paying at least the minimum amount keeps their account in good standing and completes this month's balance transfer. Missing it can add extra charges and a bad CRB report. Ask them to pay as soon as they can, and thank them for understanding.",
+  "account explanation": "Explain calmly: CRB reports are sent once a month, at month end. Penalties only apply if a loan goes into default (as per their agreement) and include interest plus collection fees. If they use *282# for a balance transfer, the new minimum amount shows before they confirm — once confirmed, a new loan agreement starts. Point them to operations@ug.unifi.credit for more help.",
+  "crb": "Let them know their file has been sent to CRB for review/clearance, and this usually takes up to 5 working days. Ask them to be patient, and give them CRB's own number (+256 200 518 600) if they want to follow up directly.",
+  "interest complaint": "Explain that a higher interest rate happens when payments are missed or late — it affects their credit score. Paying on time going forward can improve their score and may lower their rate over time. Remind them their loan is a one-term loan, so it can't be split into monthly instalments — but they can still pay more than the minimum to reduce what they owe faster.",
+  "work confirmation": "Apologise for the wait. Let them know work confirmation is still being processed and ask for a little patience. Confirm the branch team will reach out once it's done.",
+  "debit issue": "First check if they actually got paid (e.g. ask about their salary). If a payment was missed or late, explain that penalties and interest keep building as stated in their agreement — this can't be stopped once it's triggered. Offer to clarify anything else they're unsure about.",
+  "product information": "Tell them the 3 things needed to apply: a valid National ID, their most recent bank statement, and proof of income (like a payslip). That's all that's required — they can start on the company website.",
+  "limit increase": "If they've fully cleared a previous balance, thank them — this can qualify them for a higher limit. But if that earlier loan had gone into arrears (bad debt), policy requires a strict 6-month wait from the exact clearance date before they can apply again — this can't be shortened. Tell them the date they become eligible, and that you're happy to help with a fresh application once that date arrives.",
+  "resignation / job loss": "Acknowledge their change in job status kindly. Explain that resigning doesn't cancel the loan — they're still required to clear the full outstanding balance plus any charges, since it was a resignation and not a termination. Share their current balance and minimum due, and remind them they can pay via *282#. Unifi loans are one-term and can't be split into instalments, but paying more than the minimum still helps. Mention that not paying can lead to recovery action, including CRB reporting.",
+  "clearance letter request": "Explain that Unifi doesn't issue separate clearance letters — the official Account Statement is the accepted legal proof of payment, and it already shows a zero balance once cleared. Ask them to share that statement with whoever needs it (e.g. their bank), and have that party send it to clientcare@ug.unifi.credit for verification if needed.",
+  "forwarded to recoveries/legal": "Check the employer on file — sometimes a mismatch is the source of the confusion. Let them know their loan has already moved to the Legal Team, so all next steps go through them, not the regular team. Share the Legal Team's contact: recoveries@ug.legalrapidcollections.com.",
+  "missed call(nok)": "If someone calls back saying they missed our call and says they're the Next of Kin, ask if they're a Unifi client themselves, or if they know someone who is. If yes, remind them about the loan and explain the consequences/benefits based on that client's recency bucket. If they say they don't know any Unifi client, apologise, explain someone may have listed them as next of kin by mistake, let them know we'll find out and call back, and wish them an easy day.",
+  "account on hold": "We put an account on hold when a client misses a required payment. It's unheld automatically as soon as they pay at least their minimum required payment.",
+  "push to pay": "This is when a client calls in saying they have money on their line and wants us to collect it. Tell them their balance and minimum amount due, ask how much they want to pay and which line has the money. Let them know you'll cut the call and send a PIN request message for them to enter their PIN, then call them back. After payment, thank them, guide them on how to transfer, and encourage paying to enjoy benefits or avoid penalties for late payment. If they're in a higher recency bucket and only paying the bare minimum, suggest partial payments, or offer a balance transfer instead so they can decide.",
+  "ussd failure(pay)": "Ask for the exact error message shown and note it down if it keeps failing. Apologise, then ask which number/line they used to pay. Check the USSD journey in Ujuzi to see if it's a real error or a mistake on the client's end. Offer to stay on hold while you check, and offer the Push to Pay process as a fallback while you follow up on the USSD issue.",
+  "kwika": "Kwika are loyalty points clients earn, redeemable as cash. Monthly loyalty payment gives 4,000; a monthly penalty deducts 8,000. Reactivating after being Inactive earns 10,000, and reactivating after being Dormant earns 20,000. Points can be redeemed once they reach 12,000 (=12,000 UGX) — that's the minimum. Clients also earn 20,000 for every friend they refer who becomes a client (ask the friend to mention the referrer's name at the branch). To access Kwika, dial *282# then option 5.",
+  "ussd failure(borrow)": "Same process as USSD failure (Pay), but for borrowing. Check the USSD journey to see where it failed, then advise the client. Remind them that bank disbursement takes about 2 working days to reflect, while mobile wallet is immediate.",
+  "zako loan calculator": "Walk the client through where to find the Zako loan calculator, and the code to access it, so they can estimate their repayment before applying.",
+  "branch direction": "Ask which area the client is in, then give them the address and opening hours for their nearest branch.",
+  "disbursement issue": "If a client wants to cancel a loan after disbursement, they have 5 working days from disbursement to request cancellation in writing — either in person at any branch or by email to contactus@ug.unifi.credit (must be sent from the same email used to open their Unifi account). Unifi will only accept the cancellation once the client has fully repaid the loan principal plus any other applicable charges.",
+  "general inquiry": "Listen carefully to what they're asking and answer as clearly as you can. If it doesn't fit a specific category, that's fine — give an honest answer and check with your leader if you're unsure.",
+  "compliment": "Thank the client warmly for their kind words. Let them know their feedback has been noted and will be shared with the team."
+};
 const AGENTS = ["Jupiter Atuhaire","Beatrice","Grace","Rinah","Josephine"];
 
 let entries = [];       // [{id, date, agent, client, channel, topic, reason}]
 let reasons = [];       // [{id, name}]
+let replyGuides = {};   // {reasonId: guideText} — leader-editable, lives in Firebase
 let trendDays = 7;
 
 /* Leader access — client-side gate only (not real security, just keeps agents
    on the log-only view). Change this passcode to whatever you like. */
-const LEADER_PASSCODE = "Jose123Nj";
+const LEADER_PASSCODE = "sealit";
 let isLeader = localStorage.getItem("qfs_leader") === "true";
 let chartVolume = null;
 
@@ -450,12 +546,43 @@ function refreshReasonSelect(){
   fillSelect(document.getElementById("f-reason"), reasonNames(), true);
 }
 
+let knowledgeBankReconciled = false;
+function ensureKnowledgeBankReasons(){
+  if(!isConfigured || knowledgeBankReconciled) return;
+  knowledgeBankReconciled = true;
+  const existingLower = reasonNames().map(n=>n.toLowerCase());
+  NEW_KNOWLEDGE_BANK_REASONS.forEach(name=>{
+    if(!existingLower.includes(name.toLowerCase())){
+      db.ref("options/reasons").push(name);
+    }
+  });
+}
+
+let reasonsLoadedOnce = false, guidesLoadedOnce = false, guidesSeeded = false;
+function maybeSeedReplyGuides(){
+  if(!isConfigured || guidesSeeded || !reasonsLoadedOnce || !guidesLoadedOnce) return;
+  guidesSeeded = true;
+  reasons.forEach(r=>{
+    const seed = VERIFIED_SEED_GUIDES[r.name.trim().toLowerCase()];
+    if(seed && !replyGuides[r.id]){
+      db.ref("options/replyGuides/"+r.id).set(seed);
+    }
+  });
+}
+
 /* ---------------- Firebase live sync ---------------- */
 function startSync(){
   if(!isConfigured){
     // Offline demo mode so the UI is still explorable without a Firebase project.
     reasons = DEFAULT_REASONS.map((name,i)=>({id:"demo"+i, name}));
+    replyGuides = {};
+    reasons.forEach(r=>{
+      const seed = VERIFIED_SEED_GUIDES[r.name.trim().toLowerCase()];
+      if(seed) replyGuides[r.id] = seed;
+    });
     refreshReasonSelect();
+    renderReplyGuide();
+    renderReasonGuideList();
     renderAll();
     return;
   }
@@ -484,26 +611,101 @@ function startSync(){
   db.ref("options/reasons").on("value", snap=>{
     const val = snap.val() || {};
     reasons = Object.keys(val).map(id=>({id, name: val[id]})).sort((a,b)=>a.name.localeCompare(b.name));
+    reasonsLoadedOnce = true;
     refreshReasonSelect();
-    renderReasonList();
+    renderReasonGuideList();
+    renderReplyGuide();
+    ensureKnowledgeBankReasons();
+    maybeSeedReplyGuides();
     renderAll();
+  });
+
+  db.ref("options/replyGuides").on("value", snap=>{
+    replyGuides = snap.val() || {};
+    guidesLoadedOnce = true;
+    renderReplyGuide();
+    renderReasonGuideList();
+    maybeSeedReplyGuides();
   });
 }
 
+/* ---------------- migrate legacy entries (from before Channel/Topic existed) ---------------- */
+function legacyEntries(){
+  return entries.filter(e => e.category && (!e.channel || !e.topic));
+}
+
+function renderMigrationTool(){
+  const card = document.getElementById("migration-card");
+  if(!card) return;
+  const legacy = legacyEntries();
+  if(legacy.length === 0){ card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("migration-summary").textContent =
+    `${legacy.length} ${legacy.length===1?"entry was":"entries were"} logged before Channel/Topic existed, so they're not showing one yet. Click "Fix now" to convert what can be worked out automatically — anything ambiguous (old "Email" entries, which didn't used to record a topic) gets listed below for you to tag by hand.`;
+  renderManualFixList(legacy);
+}
+
+function renderManualFixList(legacy){
+  const wrap = document.getElementById("migration-manual-list");
+  const needsTopic = legacy.filter(e=> (e.channel==="Email" || e.category==="Emails") && !e.topic);
+  if(needsTopic.length===0){ wrap.innerHTML=""; return; }
+  wrap.innerHTML = `<p class="trend-note" style="margin-bottom:10px;">These were old "Emails" entries with no topic recorded — pick one for each:</p>` +
+    needsTopic.map(e=>`
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px;">
+        <span style="flex:1;">${e.date||""} — ${e.agent||""} — ${e.client||"—"} — ${e.reason||""}</span>
+        <select class="fix-topic-select" data-id="${e.id}" style="font-size:13px; padding:6px 8px; border-radius:7px; border:1px solid var(--line);">
+          <option value="">Pick topic…</option>
+          <option value="Collections">Collections</option>
+          <option value="Sales">Sales</option>
+        </select>
+      </div>
+    `).join("");
+  wrap.querySelectorAll(".fix-topic-select").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const id = sel.dataset.id;
+      const topic = sel.value;
+      if(!topic) return;
+      if(isConfigured){ await db.ref("entries/"+id).update({ topic, channel:"Email" }); }
+      else{ const e = entries.find(x=>x.id===id); if(e){ e.topic = topic; e.channel = "Email"; } renderAll(); }
+    });
+  });
+}
+
+document.getElementById("btn-run-migration").addEventListener("click", async ()=>{
+  const legacy = legacyEntries();
+  const note = document.getElementById("migration-note");
+  let fixed = 0, needsReview = 0;
+  for(const e of legacy){
+    let channel = e.channel, topic = e.topic;
+    if(e.category === "Collection(Inbound)"){ channel = "Inbound Call"; topic = "Collections"; }
+    else if(e.category === "Sales(Inbound)"){ channel = "Inbound Call"; topic = "Sales"; }
+    else if(e.category === "Emails"){ channel = "Email"; /* topic left for manual review below */ }
+    const updates = {};
+    if(channel && channel !== e.channel) updates.channel = channel;
+    if(topic && topic !== e.topic) updates.topic = topic;
+    if(Object.keys(updates).length){
+      if(isConfigured){ await db.ref("entries/"+e.id).update(updates); }
+      else{ Object.assign(e, updates); }
+      fixed++;
+    }
+    if(channel==="Email" && !topic) needsReview++;
+  }
+  if(!isConfigured) renderAll();
+  note.textContent = `Fixed ${fixed} entr${fixed===1?"y":"ies"}.` + (needsReview ? ` ${needsReview} still need${needsReview===1?"s":""} a topic — pick ${needsReview===1?"it":"them"} below.` : " All set.");
+  note.className = "save-note ok";
+});
+
 function renderAll(){
-  renderTable();
-  renderDashboard();
-  renderReport();
+  renderInsights();
   renderTrends();
+  renderMigrationTool();
 }
 
 /* ---------------- nav ---------------- */
 const titles = {
   log: ["Log a Contact","Record a call or email exactly as it came in."],
-  table: ["Feedback Log","Every entry logged by the team, newest first."],
-  dash: ["Dashboard","Live breakdown across every logged entry."],
-  report: ["Report","Pick a date range to see performance for that period."],
-  trends: ["Trends","How volume, reasons, and resolution are moving day to day."],
+  insights: ["Insights","What feedback comes up most — by channel, topic, and reason."],
+  trends: ["Trends","How volume and reasons are moving day to day."],
   reasons: ["Manage Reasons","Keep the feedback reason list current for the whole team."]
 };
 function applyRole(){
@@ -590,93 +792,9 @@ document.getElementById("btn-save").addEventListener("click", async ()=>{
   setTimeout(()=>{ note.textContent=""; note.className="save-note"; }, 3000);
 });
 
-/* ---------------- table view ---------------- */
-function filteredEntries(){
-  const agent = document.getElementById("filter-agent").value;
-  const channel = document.getElementById("filter-channel").value;
-  const topic = document.getElementById("filter-topic").value;
-  return entries.filter(e=>
-    (!agent || e.agent===agent) &&
-    (!channel || e.channel===channel) &&
-    (!topic || e.topic===topic)
-  );
-}
-
-function renderTable(){
-  const body = document.getElementById("log-body");
-  const rows = filteredEntries();
-  document.getElementById("log-count").textContent = rows.length + " of " + entries.length + " entries";
-  if(rows.length===0){
-    body.innerHTML = `<tr><td colspan="7" class="empty-row">No entries match — log one from the "Log a Contact" tab.</td></tr>`;
-    return;
-  }
-  body.innerHTML = rows.map(e=>`
-    <tr>
-      <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.channel||""}</td><td>${e.topic||""}</td>
-      <td>${e.reason||""}</td>
-      <td><button class="del-btn" data-id="${e.id}">Remove</button></td>
-    </tr>
-  `).join("");
-  body.querySelectorAll(".del-btn").forEach(b=>{
-    b.addEventListener("click", async ()=>{
-      if(isConfigured){ await db.ref("entries/"+b.dataset.id).remove(); }
-      else{ entries = entries.filter(e=>e.id!==b.dataset.id); renderAll(); }
-    });
-  });
-}
-["filter-agent","filter-channel","filter-topic"].forEach(id=>{
-  document.getElementById(id).addEventListener("change", renderTable);
-});
-
-/* ---------------- dashboard ---------------- */
+/* ---------------- shared helpers ---------------- */
 function pct(n, total){ return total>0 ? (n/total*100) : 0; }
 function fmtPct(p){ return p.toFixed(1)+"%"; }
-
-function renderDashboard(){
-  const total = entries.length;
-  document.getElementById("kpi-total").textContent = total;
-
-  const callsCount = entries.filter(e=>e.channel==="Inbound Call").length;
-  const emailsCount = entries.filter(e=>e.channel==="Email").length;
-  document.getElementById("kpi-calls").textContent = callsCount;
-  document.getElementById("kpi-emails").textContent = emailsCount;
-
-  const channelCounts = CHANNELS.map(c=>({name:c, count: entries.filter(e=>e.channel===c).length}));
-  document.getElementById("dash-channel").innerHTML = channelCounts.map(c=>`
-    <tr><td>${c.name}</td><td>${c.count}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(c.count,total)}%"></div></div>
-      <span class="pct">${fmtPct(pct(c.count,total))}</span></td></tr>
-  `).join("") + `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td></tr>`;
-
-  const topicCounts = TOPICS.map(t=>({name:t, count: entries.filter(e=>e.topic===t).length}));
-  document.getElementById("dash-topic").innerHTML = topicCounts.map(t=>`
-    <tr><td>${t.name}</td><td>${t.count}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill brass" style="width:${pct(t.count,total)}%"></div></div>
-      <span class="pct">${fmtPct(pct(t.count,total))}</span></td></tr>
-  `).join("") + `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td><td><strong>100.0%</strong></td></tr>`;
-
-  const crossRows = [];
-  CHANNELS.forEach(c=> TOPICS.forEach(t=>{
-    const count = entries.filter(e=>e.channel===c && e.topic===t).length;
-    crossRows.push({name: `${c} — ${t}`, count});
-  }));
-  document.getElementById("dash-cross").innerHTML = crossRows.map(r=>`
-    <tr><td>${r.name}</td><td>${r.count}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(r.count,total)}%"></div></div>
-      <span class="pct">${fmtPct(pct(r.count,total))}</span></td></tr>
-  `).join("");
-
-  const reasonCounts = reasonNames().map(r=>({name:r, count: entries.filter(e=>e.reason===r).length}))
-    .sort((a,b)=>b.count-a.count);
-  document.getElementById("kpi-topreason").textContent = (reasonCounts[0] && reasonCounts[0].count>0) ? reasonCounts[0].name : "—";
-  document.getElementById("dash-reason").innerHTML = reasonCounts.map(r=>`
-    <tr><td>${r.name}</td><td>${r.count}</td>
-      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(r.count,total)}%"></div></div>
-      <span class="pct">${fmtPct(pct(r.count,total))}</span></td></tr>
-  `).join("") || `<tr><td colspan="3" class="empty-row">No reasons configured yet.</td></tr>`;
-}
-
-/* ---------------- report ---------------- */
 function inRange(dateStr, start, end){
   if(!dateStr) return false;
   if(start && dateStr < start) return false;
@@ -684,34 +802,236 @@ function inRange(dateStr, start, end){
   return true;
 }
 
-function renderReport(){
-  const start = document.getElementById("r-start").value;
-  const end = document.getElementById("r-end").value;
-  const rows = entries.filter(e=>inRange(e.date, start, end));
+/* ---------------- period selection ---------------- */
+let periodKey = "all"; // 'today' | 'week' | 'month' | 'all' | 'custom'
+let customStart = "";
+let customEnd = "";
+let chartChannel = null, chartTopic = null, chartReasons = null, chartDaily = null;
+
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function startOfWeekISO(){
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = day===0 ? 6 : day-1; // days since Monday
+  d.setDate(d.getDate()-diff);
+  return isoDate(d);
+}
+function startOfMonthISO(){
+  const d = new Date();
+  return isoDate(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+function earliestEntryDate(){
+  if(entries.length===0) return todayISO();
+  return entries.reduce((min,e)=> (e.date && e.date<min) ? e.date : min, todayISO());
+}
+
+function getPeriodRange(){
+  const today = todayISO();
+  if(periodKey==="today") return { start: today, end: today, label: `Today — ${today}` };
+  if(periodKey==="week"){ const s = startOfWeekISO(); return { start:s, end:today, label:`This Week — ${s} to ${today}` }; }
+  if(periodKey==="month"){ const s = startOfMonthISO(); return { start:s, end:today, label:`This Month — ${s} to ${today}` }; }
+  if(periodKey==="custom"){
+    const s = customStart, e = customEnd;
+    return { start: s||null, end: e||null, label: `Custom — ${s||"…"} to ${e||"…"}` };
+  }
+  const s = earliestEntryDate();
+  return { start: null, end: today, label: `All Time — through ${today}` };
+}
+
+document.querySelectorAll("#period-toggle button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#period-toggle button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    periodKey = btn.dataset.period;
+    document.getElementById("custom-range-row").style.display = periodKey==="custom" ? "flex" : "none";
+    renderInsights();
+  });
+});
+document.getElementById("i-start").addEventListener("change", (e)=>{ customStart = e.target.value; renderInsights(); });
+document.getElementById("i-end").addEventListener("change", (e)=>{ customEnd = e.target.value; renderInsights(); });
+
+/* ---------------- insights (log + dashboard + report, unified) ---------------- */
+function filteredByPeriod(){
+  const range = getPeriodRange();
+  return entries.filter(e=>inRange(e.date, range.start, range.end));
+}
+function filteredEntries(){
+  const agent = document.getElementById("filter-agent").value;
+  const channel = document.getElementById("filter-channel").value;
+  const topic = document.getElementById("filter-topic").value;
+  return filteredByPeriod().filter(e=>
+    (!agent || e.agent===agent) &&
+    (!channel || e.channel===channel) &&
+    (!topic || e.topic===topic)
+  );
+}
+
+function renderInsights(){
+  const range = getPeriodRange();
+  document.getElementById("period-label").textContent = range.label;
+
+  const periodRows = filteredByPeriod();
+  const total = periodRows.length;
+  const callsCount = periodRows.filter(e=>e.channel==="Inbound Call").length;
+  const emailsCount = periodRows.filter(e=>e.channel==="Email").length;
+  document.getElementById("i-total").textContent = total;
+  document.getElementById("i-calls").textContent = callsCount;
+  document.getElementById("i-emails").textContent = emailsCount;
+
+  const reasonCounts = reasonNames().map(r=>({name:r, count: periodRows.filter(e=>e.reason===r).length}))
+    .sort((a,b)=>b.count-a.count);
+  const topReason = reasonCounts[0] && reasonCounts[0].count>0 ? reasonCounts[0].name : "—";
+  document.getElementById("i-topreason").textContent = topReason;
+
+  const crossRows = [];
+  CHANNELS.forEach(c=> TOPICS.forEach(t=>{
+    const count = periodRows.filter(e=>e.channel===c && e.topic===t).length;
+    crossRows.push({name: `${c} — ${t}`, count});
+  }));
+  document.getElementById("dash-cross").innerHTML = crossRows.map(r=>`
+    <tr><td>${r.name}</td><td>${r.count}</td>
+      <td class="bar-cell"><div class="bar-track"><div class="bar-fill" style="width:${pct(r.count,total)}%"></div></div>
+      <span class="pct">${fmtPct(pct(r.count,total))}</span></td></tr>
+  `).join("") || `<tr><td colspan="3" class="empty-row">No entries in this period.</td></tr>`;
+
+  // charts
+  if(typeof Chart !== "undefined"){
+    const chColor = ["#2F7A5E","#B8863B"];
+    if(chartChannel) chartChannel.destroy();
+    chartChannel = new Chart(document.getElementById("chart-channel").getContext("2d"), {
+      type: "doughnut",
+      data: { labels: CHANNELS.map(c=>`${c} — ${periodRows.filter(e=>e.channel===c).length} (${fmtPct(pct(periodRows.filter(e=>e.channel===c).length,total))})`),
+        datasets:[{ data: CHANNELS.map(c=>periodRows.filter(e=>e.channel===c).length), backgroundColor: chColor, borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:"bottom", labels:{ boxWidth:12, font:{ size:11 } } } } }
+    });
+
+    if(chartTopic) chartTopic.destroy();
+    chartTopic = new Chart(document.getElementById("chart-topic").getContext("2d"), {
+      type: "doughnut",
+      data: { labels: TOPICS.map(t=>`${t} — ${periodRows.filter(e=>e.topic===t).length} (${fmtPct(pct(periodRows.filter(e=>e.topic===t).length,total))})`),
+        datasets:[{ data: TOPICS.map(t=>periodRows.filter(e=>e.topic===t).length), backgroundColor: ["#5C74B8","#A23B3B"], borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:"bottom", labels:{ boxWidth:12, font:{ size:11 } } } } }
+    });
+
+    const topN = reasonCounts.filter(r=>r.count>0).slice(0,8);
+    if(chartReasons) chartReasons.destroy();
+    chartReasons = new Chart(document.getElementById("chart-reasons").getContext("2d"), {
+      type: "bar",
+      data: { labels: topN.map(r=>`${r.name} (${r.count})`), datasets:[{ data: topN.map(r=>r.count), backgroundColor:"#2F7A5E", borderRadius:4 }] },
+      options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
+    if(topN.length===0){
+      document.getElementById("reasons-chart-wrap").innerHTML = `<p class="empty-row">No reasons logged in this period yet.</p>`;
+    }
+
+    // daily volume within period — only when the range is short enough to read
+    const dailyNote = document.getElementById("daily-chart-note");
+    const dailyCanvasCard = document.getElementById("chart-daily");
+    const spanDays = range.start ? (Math.round((new Date(range.end) - new Date(range.start))/86400000)+1) : 9999;
+    if(range.start && spanDays<=31){
+      const dayList = [];
+      for(let i=0;i<spanDays;i++){
+        const d = new Date(range.start); d.setDate(d.getDate()+i);
+        dayList.push(isoDate(d));
+      }
+      const dCalls = dayList.map(d=> periodRows.filter(e=>e.date===d && e.channel==="Inbound Call").length);
+      const dEmails = dayList.map(d=> periodRows.filter(e=>e.date===d && e.channel==="Email").length);
+      if(chartDaily) chartDaily.destroy();
+      dailyCanvasCard.style.display = "block";
+      dailyNote.style.display = "none";
+      chartDaily = new Chart(dailyCanvasCard.getContext("2d"), {
+        type:"bar",
+        data:{ labels: dayList.map(d=>d.slice(5)), datasets:[
+          { label:"Inbound calls", data:dCalls, backgroundColor:"#2F7A5E", borderRadius:4, stack:"d" },
+          { label:"Emails", data:dEmails, backgroundColor:"#B8863B", borderRadius:4, stack:"d" }
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } }
+      });
+    }else{
+      if(chartDaily){ chartDaily.destroy(); chartDaily = null; }
+      dailyCanvasCard.style.display = "none";
+      dailyNote.style.display = "block";
+    }
+  }
+
+  // entries table (filtered further by agent/channel/topic on top of the period)
+  const body = document.getElementById("log-body");
+  const rows = filteredEntries();
+  document.getElementById("log-count").textContent = rows.length + " of " + periodRows.length + " entries in this period";
+  if(rows.length===0){
+    body.innerHTML = `<tr><td colspan="7" class="empty-row">No entries match — log one from the "Log a Contact" tab.</td></tr>`;
+  }else{
+    body.innerHTML = rows.map(e=>`
+      <tr>
+        <td>${e.date||""}</td><td>${e.agent||""}</td><td>${e.client||"—"}</td><td>${e.channel||""}</td><td>${e.topic||""}</td>
+        <td>${e.reason||""}</td>
+        <td><button class="del-btn" data-id="${e.id}">Remove</button></td>
+      </tr>
+    `).join("");
+    body.querySelectorAll(".del-btn").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        if(isConfigured){ await db.ref("entries/"+b.dataset.id).remove(); }
+        else{ entries = entries.filter(e=>e.id!==b.dataset.id); renderAll(); }
+      });
+    });
+  }
+}
+["filter-agent","filter-channel","filter-topic"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", renderInsights);
+});
+
+/* ---------------- generate report ---------------- */
+document.getElementById("btn-generate-report").addEventListener("click", ()=>{
+  const range = getPeriodRange();
+  const rows = filteredByPeriod();
   const total = rows.length;
-  document.getElementById("r-total").textContent = total;
-
-  const callsInPeriod = rows.filter(e=>e.channel==="Inbound Call").length;
-  const emailsInPeriod = rows.filter(e=>e.channel==="Email").length;
-  document.getElementById("r-calls").textContent = callsInPeriod;
-  document.getElementById("r-emails").textContent = emailsInPeriod;
-
+  const callsCount = rows.filter(e=>e.channel==="Inbound Call").length;
+  const emailsCount = rows.filter(e=>e.channel==="Email").length;
   const reasonCounts = reasonNames().map(r=>({name:r, count: rows.filter(e=>e.reason===r).length}))
     .sort((a,b)=>b.count-a.count);
-  const top5 = reasonCounts.slice(0,5);
-  document.getElementById("r-top-reason").textContent = (top5[0] && top5[0].count>0) ? top5[0].name : "—";
+  const top5 = reasonCounts.filter(r=>r.count>0).slice(0,5);
+  const crossRows = [];
+  CHANNELS.forEach(c=> TOPICS.forEach(t=>{
+    crossRows.push({ name:`${c} — ${t}`, count: rows.filter(e=>e.channel===c && e.topic===t).length });
+  }));
 
-  document.getElementById("r-top5").innerHTML = top5.map((r,i)=>`
-    <tr><td><span class="rank-badge">${i+1}</span></td><td>${r.name}</td><td>${r.count}</td><td>${fmtPct(pct(r.count,total))}</td></tr>
-  `).join("") || `<tr><td colspan="4" class="empty-row">No entries in this period.</td></tr>`;
+  const channelImg = chartChannel ? chartChannel.toBase64Image() : "";
+  const topicImg = chartTopic ? chartTopic.toBase64Image() : "";
+  const reasonsImg = chartReasons ? chartReasons.toBase64Image() : "";
+  const dailyImg = chartDaily ? chartDaily.toBase64Image() : "";
 
-  const topicCounts = TOPICS.map(t=>({name:t, count: rows.filter(e=>e.topic===t).length}));
-  document.getElementById("r-topic").innerHTML = topicCounts.map(t=>`
-    <tr><td>${t.name}</td><td>${t.count}</td><td>${fmtPct(pct(t.count,total))}</td></tr>
-  `).join("");
-}
-document.getElementById("r-start").addEventListener("change", renderReport);
-document.getElementById("r-end").addEventListener("change", renderReport);
+  const generatedAt = new Date().toLocaleString(undefined, { dateStyle:"medium", timeStyle:"short" });
+
+  document.getElementById("print-report").innerHTML = `
+    <h1>Quick Fix Stars — Inbound &amp; Email Feedback Report</h1>
+    <p class="pr-sub">${range.label} &nbsp;·&nbsp; Generated ${generatedAt}</p>
+    <div class="pr-kpis">
+      <div class="pr-kpi"><div class="n">${total}</div><div class="l">Total contacts</div></div>
+      <div class="pr-kpi"><div class="n">${callsCount}</div><div class="l">Inbound calls</div></div>
+      <div class="pr-kpi"><div class="n">${emailsCount}</div><div class="l">Emails</div></div>
+      <div class="pr-kpi"><div class="n">${top5[0] ? top5[0].name : "—"}</div><div class="l">Top reason</div></div>
+    </div>
+    <h2>Channel &amp; topic split</h2>
+    <div class="pr-charts">
+      ${channelImg ? `<img src="${channelImg}">` : ""}
+      ${topicImg ? `<img src="${topicImg}">` : ""}
+    </div>
+    <h2>Top feedback reasons</h2>
+    ${reasonsImg ? `<img class="pr-wide" src="${reasonsImg}">` : "<p>No reasons logged in this period.</p>"}
+    <table>
+      <thead><tr><th>Rank</th><th>Reason</th><th>Count</th><th>% of period</th></tr></thead>
+      <tbody>${top5.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.count}</td><td>${fmtPct(pct(r.count,total))}</td></tr>`).join("")}</tbody>
+    </table>
+    ${dailyImg ? `<h2>Daily volume</h2><img class="pr-wide" src="${dailyImg}">` : ""}
+    <h2>Topic × Channel</h2>
+    <table>
+      <thead><tr><th>Combination</th><th>Count</th><th>% of total</th></tr></thead>
+      <tbody>${crossRows.map(r=>`<tr><td>${r.name}</td><td>${r.count}</td><td>${fmtPct(pct(r.count,total))}</td></tr>`).join("")}</tbody>
+    </table>
+  `;
+  setTimeout(()=> window.print(), 60);
+});
 
 /* ---------------- trends ---------------- */
 document.querySelectorAll("#trend-range button").forEach(btn=>{
@@ -790,39 +1110,112 @@ function renderTrends(){
   }
 }
 
-/* ---------------- manage reasons ---------------- */
-function renderReasonList(){
-  const wrap = document.getElementById("reason-list");
+/* ---------------- quick reply guide (agent-facing) ---------------- */
+function renderReplyGuide(){
+  const wrap = document.getElementById("reply-grid");
+  if(!wrap) return;
   if(reasons.length===0){
-    wrap.innerHTML = `<span class="empty-row">No reasons yet — add the first one below.</span>`;
+    wrap.innerHTML = `<span class="empty-row">No reasons configured yet.</span>`;
+    return;
+  }
+  wrap.innerHTML = reasons.map(r=>{
+    const guide = replyGuides[r.id];
+    if(guide){
+      return `<div class="reply-chip has-guide" tabindex="0">${r.name}<div class="reply-tooltip"><span class="rt-label">Suggested reply</span>${guide}</div></div>`;
+    }
+    return `<div class="reply-chip">${r.name}</div>`;
+  }).join("");
+  // tap-to-toggle for touch devices, since :hover doesn't fire on tap
+  wrap.querySelectorAll(".reply-chip.has-guide").forEach(chip=>{
+    chip.addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      const wasOpen = chip.classList.contains("tapped");
+      wrap.querySelectorAll(".reply-chip.tapped").forEach(c=>c.classList.remove("tapped"));
+      if(!wasOpen) chip.classList.add("tapped");
+    });
+  });
+}
+document.addEventListener("click", ()=>{
+  document.querySelectorAll(".reply-chip.tapped").forEach(c=>c.classList.remove("tapped"));
+});
+
+/* ---------------- manage reasons (leader-only: add/remove reasons, edit reply guides) ---------------- */
+function renderReasonGuideList(){
+  const wrap = document.getElementById("reason-guide-list");
+  if(!wrap) return;
+  if(reasons.length===0){
+    wrap.innerHTML = `<span class="empty-row">No reasons yet — add the first one above.</span>`;
     return;
   }
   wrap.innerHTML = reasons.map(r=>`
-    <span class="reason-chip">${r.name}<button data-id="${r.id}" title="Remove">×</button></span>
+    <div class="reason-guide-row">
+      <div class="rg-head">
+        <strong>${r.name}</strong>
+        <button class="del-btn" data-id="${r.id}">Remove reason</button>
+      </div>
+      <textarea class="rg-textarea" data-id="${r.id}" rows="3" placeholder="No reply guide yet — write one so agents see it on Log a Contact.">${replyGuides[r.id] || ""}</textarea>
+      <div class="rg-actions">
+        <button class="secondary rg-save" data-id="${r.id}">Save reply</button>
+        <span class="save-note rg-note" data-id="${r.id}"></span>
+      </div>
+    </div>
   `).join("");
-  wrap.querySelectorAll("button").forEach(b=>{
+
+  wrap.querySelectorAll(".del-btn").forEach(b=>{
     b.addEventListener("click", async ()=>{
-      if(isConfigured){ await db.ref("options/reasons/"+b.dataset.id).remove(); }
-      else{ reasons = reasons.filter(r=>r.id!==b.dataset.id); refreshReasonSelect(); renderReasonList(); renderAll(); }
+      if(isConfigured){
+        await db.ref("options/reasons/"+b.dataset.id).remove();
+        await db.ref("options/replyGuides/"+b.dataset.id).remove();
+      }else{
+        reasons = reasons.filter(r=>r.id!==b.dataset.id);
+        delete replyGuides[b.dataset.id];
+        refreshReasonSelect(); renderReasonGuideList(); renderReplyGuide(); renderAll();
+      }
+    });
+  });
+
+  wrap.querySelectorAll(".rg-save").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const id = btn.dataset.id;
+      const textarea = wrap.querySelector(`.rg-textarea[data-id="${id}"]`);
+      const note = wrap.querySelector(`.rg-note[data-id="${id}"]`);
+      const text = textarea.value.trim();
+      if(isConfigured){
+        if(text){ await db.ref("options/replyGuides/"+id).set(text); }
+        else{ await db.ref("options/replyGuides/"+id).remove(); }
+      }else{
+        if(text){ replyGuides[id] = text; } else { delete replyGuides[id]; }
+        renderReplyGuide();
+      }
+      note.textContent = "Saved.";
+      note.className = "save-note ok rg-note";
+      setTimeout(()=>{ note.textContent=""; note.className="save-note rg-note"; }, 2000);
     });
   });
 }
 
 document.getElementById("btn-add-reason").addEventListener("click", async ()=>{
   const input = document.getElementById("new-reason");
+  const guideInput = document.getElementById("new-reason-guide");
   const note = document.getElementById("reason-note");
   const name = input.value.trim();
+  const guideText = guideInput.value.trim();
   if(!name){ note.textContent="Type a reason first."; note.className="save-note err"; return; }
   if(reasonNames().some(r=>r.toLowerCase()===name.toLowerCase())){
     note.textContent = "That reason already exists."; note.className="save-note err"; return;
   }
   if(isConfigured){
-    await db.ref("options/reasons").push(name);
+    const ref = db.ref("options/reasons").push();
+    await ref.set(name);
+    if(guideText){ await db.ref("options/replyGuides/"+ref.key).set(guideText); }
   }else{
-    reasons.push({id:"local"+Date.now(), name});
-    refreshReasonSelect(); renderReasonList(); renderAll();
+    const id = "local"+Date.now();
+    reasons.push({id, name});
+    if(guideText) replyGuides[id] = guideText;
+    refreshReasonSelect(); renderReasonGuideList(); renderReplyGuide(); renderAll();
   }
   input.value = "";
+  guideInput.value = "";
   note.textContent = "Reason added."; note.className = "save-note ok";
   setTimeout(()=>{ note.textContent=""; note.className="save-note"; }, 2500);
 });
@@ -839,10 +1232,6 @@ setInterval(tickClock, 30000);
 (function init(){
   initStaticOptions();
   applyRole();
-  const today = todayISO();
-  const in12 = new Date(); in12.setDate(in12.getDate()+11);
-  document.getElementById("r-start").value = today;
-  document.getElementById("r-end").value = in12.toISOString().slice(0,10);
   startSync();
 })();
 </script>
